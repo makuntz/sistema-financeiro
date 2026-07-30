@@ -4,7 +4,11 @@ export function createTestWorkspaceId(suffix = 'a'): string {
 }
 
 export function createTestUuid(seed: string): string {
-  const normalized = seed.replace(/[^a-f0-9]/gi, '0').toLowerCase().padEnd(32, '0').slice(0, 32);
+  const normalized = seed
+    .replace(/[^a-f0-9]/gi, '0')
+    .toLowerCase()
+    .padEnd(32, '0')
+    .slice(0, 32);
   return [
     normalized.slice(0, 8),
     normalized.slice(8, 12),

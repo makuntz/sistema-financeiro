@@ -26,6 +26,9 @@ import {
   type CreateInvitationResponse,
   type InvitationDto,
   type InvitationPreviewDto,
+  type MonthlyPlanDto,
+  type SaveMonthlyPlanRequest,
+  type CopyPreviousMonthlyPlanRequest,
 } from '@pp-planning/contracts';
 
 export class ApiClientError extends Error {
@@ -187,13 +190,19 @@ export class ApiClient {
 
   // --- Taxonomy ---
 
-  async listCategories(query?: { type?: string; includeInactive?: boolean; search?: string }): Promise<{ data: CategoryWithSubcategoriesDto[] }> {
+  async listCategories(query?: {
+    type?: string;
+    includeInactive?: boolean;
+    search?: string;
+  }): Promise<{ data: CategoryWithSubcategoriesDto[] }> {
     const params = new URLSearchParams();
     if (query?.type) params.set('type', query.type);
     if (query?.includeInactive) params.set('includeInactive', 'true');
     if (query?.search) params.set('search', query.search);
     const qs = params.toString();
-    return this.request<{ data: CategoryWithSubcategoriesDto[] }>(`/v1/categories${qs ? `?${qs}` : ''}`);
+    return this.request<{ data: CategoryWithSubcategoriesDto[] }>(
+      `/v1/categories${qs ? `?${qs}` : ''}`,
+    );
   }
 
   async createCategory(input: CreateCategoryRequest): Promise<CategoryDto> {
@@ -226,14 +235,20 @@ export class ApiClient {
     return this.request<{ data: SubcategoryDto[] }>(`/v1/categories/${categoryId}/subcategories`);
   }
 
-  async createSubcategory(categoryId: string, input: CreateSubcategoryRequest): Promise<SubcategoryDto> {
+  async createSubcategory(
+    categoryId: string,
+    input: CreateSubcategoryRequest,
+  ): Promise<SubcategoryDto> {
     return this.request<SubcategoryDto>(`/v1/categories/${categoryId}/subcategories`, {
       method: 'POST',
       body: JSON.stringify(input),
     });
   }
 
-  async updateSubcategory(subcategoryId: string, input: UpdateSubcategoryRequest): Promise<SubcategoryDto> {
+  async updateSubcategory(
+    subcategoryId: string,
+    input: UpdateSubcategoryRequest,
+  ): Promise<SubcategoryDto> {
     return this.request<SubcategoryDto>(`/v1/subcategories/${subcategoryId}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
@@ -249,6 +264,34 @@ export class ApiClient {
   async reactivateSubcategory(subcategoryId: string): Promise<SubcategoryDto> {
     return this.request<SubcategoryDto>(`/v1/subcategories/${subcategoryId}/reactivate`, {
       method: 'POST',
+    });
+  }
+
+  // --- Planning ---
+
+  async getMonthlyPlan(year: number, month: number): Promise<MonthlyPlanDto> {
+    return this.request<MonthlyPlanDto>(`/v1/planning/monthly/${year}/${month}`);
+  }
+
+  async saveMonthlyPlan(
+    year: number,
+    month: number,
+    input: SaveMonthlyPlanRequest,
+  ): Promise<MonthlyPlanDto> {
+    return this.request<MonthlyPlanDto>(`/v1/planning/monthly/${year}/${month}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async copyPreviousMonthlyPlan(
+    year: number,
+    month: number,
+    input: CopyPreviousMonthlyPlanRequest,
+  ): Promise<MonthlyPlanDto> {
+    return this.request<MonthlyPlanDto>(`/v1/planning/monthly/${year}/${month}/copy-previous`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     });
   }
 

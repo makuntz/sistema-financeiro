@@ -46,8 +46,7 @@ function RegisterForm() {
         return;
       }
 
-      const redirectTo =
-        next && next.startsWith('/') && !next.startsWith('//') ? next : '/inicio';
+      const redirectTo = next && next.startsWith('/') && !next.startsWith('//') ? next : '/inicio';
       router.push(redirectTo);
       router.refresh();
     } catch {
@@ -59,7 +58,9 @@ function RegisterForm() {
 
   return (
     <Card style={{ width: 'min(100%, 26rem)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.1rem' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.1rem' }}
+      >
         <div
           aria-hidden
           style={{
@@ -77,7 +78,9 @@ function RegisterForm() {
         </div>
         <div>
           <div style={{ fontWeight: 700 }}>PP Planning</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>
+          <div
+            style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}
+          >
             SUA VIDA. SEU PLANO.
           </div>
         </div>
@@ -96,7 +99,10 @@ function RegisterForm() {
         Crie seu planejamento financeiro pessoal.
       </p>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+      >
         <Input
           label="Nome"
           name="name"

@@ -17,11 +17,9 @@ export class ReactivateCategory {
     );
 
     if (!category) {
-      throw new DomainError(
-        'CATEGORY_NOT_FOUND',
-        'Categoria não encontrada.',
-        { categoryId: input.categoryId },
-      );
+      throw new DomainError('CATEGORY_NOT_FOUND', 'Categoria não encontrada.', {
+        categoryId: input.categoryId,
+      });
     }
 
     category.activate();

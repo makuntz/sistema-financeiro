@@ -27,11 +27,10 @@ export class CreateCategory {
     );
 
     if (existing) {
-      throw new DomainError(
-        'CATEGORY_ALREADY_EXISTS',
-        'Já existe uma categoria com este nome.',
-        { workspaceId: input.workspaceId, name: input.name },
-      );
+      throw new DomainError('CATEGORY_ALREADY_EXISTS', 'Já existe uma categoria com este nome.', {
+        workspaceId: input.workspaceId,
+        name: input.name,
+      });
     }
 
     const category = Category.create(input);

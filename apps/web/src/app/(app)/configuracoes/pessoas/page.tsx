@@ -43,13 +43,11 @@ export default function PessoasPage() {
       fetch('/api/bff/auth/me').then((r) => (r.ok ? r.json() : null)),
     ])
       .then(([mems, invs, me]) => {
-        const rawMembers = Array.isArray(mems)
-          ? mems
-          : Array.isArray(mems?.data)
-            ? mems.data
-            : [];
+        const rawMembers = Array.isArray(mems) ? mems : Array.isArray(mems?.data) ? mems.data : [];
         const memberList: Member[] = rawMembers.map(
-          (item: Member & { member?: Member; user?: { id: string; name: string; email: string } }) => {
+          (
+            item: Member & { member?: Member; user?: { id: string; name: string; email: string } },
+          ) => {
             if (item.member && item.user) {
               return {
                 id: item.member.id,
@@ -66,9 +64,7 @@ export default function PessoasPage() {
           },
         );
         setMembers(memberList);
-        setInvitations(
-          Array.isArray(invs) ? invs : Array.isArray(invs?.data) ? invs.data : [],
-        );
+        setInvitations(Array.isArray(invs) ? invs : Array.isArray(invs?.data) ? invs.data : []);
 
         const userId = me?.user?.id ?? me?.id;
         if (userId) {
@@ -169,7 +165,11 @@ export default function PessoasPage() {
         </div>
       </div>
 
-      {error && <Alert variant="danger" style={{ marginBottom: '1rem' }}>{error}</Alert>}
+      {error && (
+        <Alert variant="danger" style={{ marginBottom: '1rem' }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Members */}
       <Card title="Membros" style={{ marginBottom: '1.5rem' }}>
@@ -207,7 +207,9 @@ export default function PessoasPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{m.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{m.email}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {m.email}
+                  </div>
                 </div>
                 {permissions.canChangeRoles && normalizeRole(m.role) !== 'owner' ? (
                   <select
@@ -222,7 +224,9 @@ export default function PessoasPage() {
                       color: 'var(--text-primary)',
                     }}
                   >
-                    {permissions.canPromoteOwner ? <option value="owner">Proprietário</option> : null}
+                    {permissions.canPromoteOwner ? (
+                      <option value="owner">Proprietário</option>
+                    ) : null}
                     <option value="admin">Administrador</option>
                     <option value="member">Membro</option>
                     <option value="viewer">Somente leitura</option>
@@ -233,7 +237,12 @@ export default function PessoasPage() {
                 {permissions.canRemoveMembers && normalizeRole(m.role) !== 'owner' && (
                   <button
                     onClick={() => handleRemoveMember(m.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-danger)' }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--status-danger)',
+                    }}
                     title="Remover"
                   >
                     <Trash2 size={16} />
@@ -269,7 +278,13 @@ export default function PessoasPage() {
                 {permissions.canInvite && (
                   <button
                     onClick={() => handleRevoke(inv.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--status-danger)', fontSize: '0.75rem' }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--status-danger)',
+                      fontSize: '0.75rem',
+                    }}
                   >
                     Revogar
                   </button>
@@ -310,7 +325,9 @@ export default function PessoasPage() {
             </select>
           </label>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={() => setShowInvite(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => setShowInvite(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleInvite} disabled={inviting}>
               {inviting ? 'Enviando...' : 'Enviar convite'}
             </Button>

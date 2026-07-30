@@ -23,7 +23,12 @@ import {
   ReactivateSubcategory,
   ListSubcategories,
 } from '@pp-planning/domain';
-import type { CategoryRepository, SubcategoryRepository, Permission, CategoryFilters } from '@pp-planning/domain';
+import type {
+  CategoryRepository,
+  SubcategoryRepository,
+  Permission,
+  CategoryFilters,
+} from '@pp-planning/domain';
 
 const categoryIdParamsSchema = z.object({ categoryId: z.string().uuid() });
 const subcategoryIdParamsSchema = z.object({ subcategoryId: z.string().uuid() });
@@ -34,8 +39,29 @@ export type CategoryWithSubcategoriesProvider = {
     filters?: CategoryFilters,
   ): Promise<
     Array<{
-      category: { id: string; workspaceId: string; name: string; type: string; color: string; icon: string; order: number; isActive: boolean; createdAt: Date; updatedAt: Date };
-      subcategories: Array<{ id: string; workspaceId: string; categoryId: string; name: string; normalizedName: string; order: number; isActive: boolean; createdAt: Date; updatedAt: Date }>;
+      category: {
+        id: string;
+        workspaceId: string;
+        name: string;
+        type: string;
+        color: string;
+        icon: string;
+        order: number;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+      };
+      subcategories: Array<{
+        id: string;
+        workspaceId: string;
+        categoryId: string;
+        name: string;
+        normalizedName: string;
+        order: number;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+      }>;
     }>
   >;
 };
@@ -46,7 +72,9 @@ export type TaxonomyHttpDeps = {
   subcategoryRepository: SubcategoryRepository;
   authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireWorkspace: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  requirePermission: (permission: Permission) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requirePermission: (
+    permission: Permission,
+  ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 };
 
 export async function registerTaxonomyRoutes(
@@ -57,7 +85,10 @@ export async function registerTaxonomyRoutes(
   const updateCategory = new UpdateCategory(deps.categoryRepository);
   const inactivateCategory = new InactivateCategory(deps.categoryRepository);
   const reactivateCategory = new ReactivateCategory(deps.categoryRepository);
-  const createSubcategory = new CreateSubcategory(deps.categoryRepository, deps.subcategoryRepository);
+  const createSubcategory = new CreateSubcategory(
+    deps.categoryRepository,
+    deps.subcategoryRepository,
+  );
   const updateSubcategory = new UpdateSubcategory(deps.subcategoryRepository);
   const inactivateSubcategory = new InactivateSubcategory(deps.subcategoryRepository);
   const reactivateSubcategory = new ReactivateSubcategory(deps.subcategoryRepository);
@@ -337,7 +368,18 @@ export async function registerTaxonomyRoutes(
   );
 }
 
-function presentCategory(category: { id: string; workspaceId: string; name: string; type: string; color: string; icon: string; order: number; isActive: boolean; createdAt: Date; updatedAt: Date }) {
+function presentCategory(category: {
+  id: string;
+  workspaceId: string;
+  name: string;
+  type: string;
+  color: string;
+  icon: string;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
   return {
     id: category.id,
     workspaceId: category.workspaceId,
@@ -352,7 +394,16 @@ function presentCategory(category: { id: string; workspaceId: string; name: stri
   };
 }
 
-function presentSubcategory(sub: { id: string; workspaceId: string; categoryId: string; name: string; order: number; isActive: boolean; createdAt: Date; updatedAt: Date }) {
+function presentSubcategory(sub: {
+  id: string;
+  workspaceId: string;
+  categoryId: string;
+  name: string;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
   return {
     id: sub.id,
     workspaceId: sub.workspaceId,

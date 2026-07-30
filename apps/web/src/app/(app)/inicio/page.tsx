@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Button, EmptyState } from '@pp-planning/ui-web';
+import { Button, EmptyState, MoneyDisplay } from '@pp-planning/ui-web';
 import {
   CheckCircle2,
   Circle,
@@ -13,6 +13,7 @@ import {
   FolderTree,
   UserRound,
 } from 'lucide-react';
+import { buildPlanningHref, getSaoPauloYearMonth } from '@/lib/planning-period';
 
 type ChecklistItem = {
   id: string;
@@ -22,13 +23,26 @@ type ChecklistItem = {
   soon?: boolean;
 };
 
+type PlanningSummary = {
+  exists: boolean;
+  totals: {
+    incomePlannedInCents: string;
+    expensePlannedInCents: string;
+    projectedBalanceInCents: string;
+  };
+};
+
 export default function InicioPage() {
   const [userName, setUserName] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
   const [categoryCount, setCategoryCount] = useState(0);
   const [memberCount, setMemberCount] = useState(0);
+  const [planning, setPlanning] = useState<PlanningSummary | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { year, month } = useMemo(() => getSaoPauloYearMonth(), []);
+  const planningHref = buildPlanningHref(year, month, 'resumo');
 
   useEffect(() => {
     Promise.all([
@@ -36,8 +50,9 @@ export default function InicioPage() {
       fetch('/api/bff/categories').then((r) => (r.ok ? r.json() : null)),
       fetch('/api/bff/members').then((r) => (r.ok ? r.json() : null)),
       fetch('/api/bff/workspaces').then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/bff/planning/monthly/${year}/${month}`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([userRes, categoriesRes, membersRes, workspacesRes]) => {
+      .then(([userRes, categoriesRes, membersRes, workspacesRes, planningRes]) => {
         const name = userRes?.user?.name ?? userRes?.name ?? '';
         setUserName(name);
 
@@ -59,9 +74,27 @@ export default function InicioPage() {
 
         setCategoryCount(catArray.length);
         setMemberCount(memArray.length);
-        const current =
-          wsArray[0]?.workspace?.name ?? wsArray[0]?.name ?? 'Seu planejamento';
+        const current = wsArray[0]?.workspace?.name ?? wsArray[0]?.name ?? 'Seu planejamento';
         setWorkspaceName(current);
+
+        const planningSummary: PlanningSummary = planningRes
+          ? {
+              exists: Boolean(planningRes.exists),
+              totals: planningRes.totals ?? {
+                incomePlannedInCents: '0',
+                expensePlannedInCents: '0',
+                projectedBalanceInCents: '0',
+              },
+            }
+          : {
+              exists: false,
+              totals: {
+                incomePlannedInCents: '0',
+                expensePlannedInCents: '0',
+                projectedBalanceInCents: '0',
+              },
+            };
+        setPlanning(planningSummary);
 
         setChecklist([
           {
@@ -79,19 +112,19 @@ export default function InicioPage() {
           {
             id: 'planning',
             label: 'Crie seu primeiro planejamento mensal',
-            done: false,
-            soon: true,
+            done: planningSummary.exists,
+            href: '/planejamento',
           },
         ]);
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, []);
+  }, [year, month]);
 
-  const greeting = useMemo(
-    () => (userName ? `Olá, ${userName.split(' ')[0]}` : 'Olá'),
-    [userName],
-  );
+  const greeting = useMemo(() => (userName ? `Olá, ${userName.split(' ')[0]}` : 'Olá'), [userName]);
+
+  const balanceTone =
+    BigInt(planning?.totals.projectedBalanceInCents || '0') >= 0n ? 'income' : 'expense';
 
   if (loading) {
     return (
@@ -110,11 +143,13 @@ export default function InicioPage() {
         <div>
           <h1>Resumo geral</h1>
           <p>
-            {greeting}. Acompanhe a configuração do planejamento{' '}
-            <strong>{workspaceName}</strong> sem dados financeiros fictícios.
+            {greeting}. Acompanhe a configuração do planejamento <strong>{workspaceName}</strong>.
           </p>
         </div>
         <div className="page-actions">
+          <Link href={planningHref}>
+            <Button variant="secondary">Abrir planejamento</Button>
+          </Link>
           <Link href="/configuracoes/categorias">
             <Button variant="secondary">Configurar categorias</Button>
           </Link>
@@ -148,12 +183,62 @@ export default function InicioPage() {
         <div className="stat-card">
           <div className="stat-card-label">
             <CalendarRange size={16} />
-            Planejamento mensal
+            Receitas previstas
           </div>
-          <div className="stat-card-value" style={{ fontSize: '1.05rem' }}>
-            Em breve
+          <div className="stat-card-value" style={{ fontSize: '1.15rem' }}>
+            {planning?.exists ? (
+              <MoneyDisplay
+                cents={BigInt(planning.totals.incomePlannedInCents || '0')}
+                tone="income"
+              />
+            ) : (
+              '—'
+            )}
           </div>
-          <div className="stat-card-hint">Orçamento por categoria virá na próxima etapa</div>
+          <div className="stat-card-hint">Mês atual (São Paulo)</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-label">
+            <CalendarRange size={16} />
+            Gastos previstos
+          </div>
+          <div className="stat-card-value" style={{ fontSize: '1.15rem' }}>
+            {planning?.exists ? (
+              <MoneyDisplay
+                cents={BigInt(planning.totals.expensePlannedInCents || '0')}
+                tone="expense"
+              />
+            ) : (
+              '—'
+            )}
+          </div>
+          <div className="stat-card-hint">Mês atual (São Paulo)</div>
+        </div>
+      </div>
+
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+        <div className="stat-card">
+          <div className="stat-card-label">
+            <CalendarRange size={16} />
+            Saldo projetado
+          </div>
+          <div className="stat-card-value" style={{ fontSize: '1.15rem' }}>
+            {planning?.exists ? (
+              <MoneyDisplay
+                cents={BigInt(planning.totals.projectedBalanceInCents || '0')}
+                tone={balanceTone}
+              />
+            ) : (
+              '—'
+            )}
+          </div>
+          <div className="stat-card-hint">
+            {planning?.exists ? (
+              <Link href={planningHref}>Abrir planejamento</Link>
+            ) : (
+              <Link href={planningHref}>Crie seu planejamento deste mês</Link>
+            )}
+          </div>
         </div>
         <div className="stat-card">
           <div className="stat-card-label">
@@ -161,7 +246,13 @@ export default function InicioPage() {
             Próximo foco
           </div>
           <div className="stat-card-value" style={{ fontSize: '1.05rem' }}>
-            {categoryCount === 0 ? 'Categorias' : memberCount < 2 ? 'Convites' : 'Planejar'}
+            {categoryCount === 0
+              ? 'Categorias'
+              : !planning?.exists
+                ? 'Planejamento'
+                : memberCount < 2
+                  ? 'Convites'
+                  : 'Planejar'}
           </div>
           <div className="stat-card-hint">Siga o checklist ao lado</div>
         </div>
@@ -211,6 +302,19 @@ export default function InicioPage() {
         <section className="panel">
           <h2>Atalhos</h2>
           <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <Link href={planningHref} style={{ textDecoration: 'none' }}>
+              <div className="stat-card" style={{ boxShadow: 'none' }}>
+                <div className="stat-card-label">
+                  <CalendarRange size={16} />
+                  Planejamento mensal
+                </div>
+                <div className="stat-card-hint">
+                  {planning?.exists
+                    ? 'Revise ou ajuste o mês atual'
+                    : 'Crie seu planejamento deste mês'}
+                </div>
+              </div>
+            </Link>
             <Link href="/configuracoes/categorias" style={{ textDecoration: 'none' }}>
               <div className="stat-card" style={{ boxShadow: 'none' }}>
                 <div className="stat-card-label">

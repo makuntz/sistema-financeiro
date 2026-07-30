@@ -137,10 +137,7 @@ export class AcceptWorkspaceInvitation {
     }
     workspace.assertActive();
 
-    const existing = await this.members.findByWorkspaceAndUser(
-      invitation.workspaceId,
-      user.id,
-    );
+    const existing = await this.members.findByWorkspaceAndUser(invitation.workspaceId, user.id);
 
     if (existing?.isActive) {
       if (invitation.status() === 'pending') {

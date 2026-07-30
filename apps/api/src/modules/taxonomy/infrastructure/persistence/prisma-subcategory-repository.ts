@@ -16,7 +16,10 @@ export class PrismaSubcategoryRepository implements SubcategoryRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async findByCategoryAndWorkspace(categoryId: string, workspaceId: string): Promise<Subcategory[]> {
+  async findByCategoryAndWorkspace(
+    categoryId: string,
+    workspaceId: string,
+  ): Promise<Subcategory[]> {
     const rows = await this.prisma.subcategory.findMany({
       where: { categoryId, workspaceId },
       orderBy: [{ order: 'asc' }, { name: 'asc' }],

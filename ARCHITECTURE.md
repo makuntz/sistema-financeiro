@@ -10,23 +10,23 @@ No estágio atual, um único deploy de API com módulos bem delimitados oferece 
 
 ## Limites dos módulos
 
-| Módulo | Responsabilidade |
-|--------|------------------|
-| Identity | Usuários, autenticação, sessões, preferências |
-| Workspaces | Espaço compartilhado, membros, papéis, convites |
-| Taxonomy | Categorias, subcategorias, fontes de receita |
-| Planning | Orçamento mensal planejado |
-| Ledger | O que realmente aconteceu (lançamentos) |
-| Accounts | Contas, bancos, saldos |
-| Cards | Cartões e faturas |
-| Installments | Compras parceladas |
-| Recurring | Regras recorrentes |
-| Documents | Anexos e metadados |
-| Receipt Processing | OCR/IA (futuro), com confirmação humana |
-| Reports | Agregações e indicadores |
-| Goals | Metas |
-| Notifications | Alertas (futuro) |
-| Audit | Trilha de auditoria |
+| Módulo             | Responsabilidade                                |
+| ------------------ | ----------------------------------------------- |
+| Identity           | Usuários, autenticação, sessões, preferências   |
+| Workspaces         | Espaço compartilhado, membros, papéis, convites |
+| Taxonomy           | Categorias, subcategorias, fontes de receita    |
+| Planning           | Orçamento mensal planejado                      |
+| Ledger             | O que realmente aconteceu (lançamentos)         |
+| Accounts           | Contas, bancos, saldos                          |
+| Cards              | Cartões e faturas                               |
+| Installments       | Compras parceladas                              |
+| Recurring          | Regras recorrentes                              |
+| Documents          | Anexos e metadados                              |
+| Receipt Processing | OCR/IA (futuro), com confirmação humana         |
+| Reports            | Agregações e indicadores                        |
+| Goals              | Metas                                           |
+| Notifications      | Alertas (futuro)                                |
+| Audit              | Trilha de auditoria                             |
 
 ## Fluxo de dependências
 
@@ -77,13 +77,13 @@ O frontend informa qual workspace deseja usar, mas **não é fonte da verdade** 
 
 Status derivado de timestamps (não há coluna `status` persistida):
 
-| Status | Condição |
-|--------|----------|
-| `pending` | Sem `acceptedAt`, `declinedAt`, `revokedAt` e `expiresAt` no futuro |
-| `accepted` | `acceptedAt` preenchido |
-| `declined` | `declinedAt` preenchido |
-| `revoked` | `revokedAt` preenchido |
-| `expired` | TTL de 7 dias ultrapassado e ainda pendente |
+| Status     | Condição                                                            |
+| ---------- | ------------------------------------------------------------------- |
+| `pending`  | Sem `acceptedAt`, `declinedAt`, `revokedAt` e `expiresAt` no futuro |
+| `accepted` | `acceptedAt` preenchido                                             |
+| `declined` | `declinedAt` preenchido                                             |
+| `revoked`  | `revokedAt` preenchido                                              |
+| `expired`  | TTL de 7 dias ultrapassado e ainda pendente                         |
 
 Fluxo: owner/admin cria convite → token opaco na URL → convidado faz login/cadastro com o e-mail convidado → aceita ou recusa. Novo convite para o mesmo e-mail revoga o pendente anterior. Aceitar exige que o e-mail da conta autenticada coincida com o do convite.
 
@@ -99,11 +99,11 @@ Admins gerenciam membros, mas não alteram papéis envolvendo `owner`.
 
 Três eixos distintos:
 
-| Campo | Significado |
-|-------|-------------|
-| `workspaceId` | **Proprietário lógico** — a quem pertence o dado financeiro; isolamento e autorização |
-| `createdByUserId` | **Autor** — quem criou o registro (workspace, convite, etc.); auditoria |
-| `paidByMemberId` *(futuro)* | **Quem pagou** — atribuição pessoal dentro do workspace compartilhado (ex.: “Leandro pagou este gasto”) |
+| Campo                       | Significado                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `workspaceId`               | **Proprietário lógico** — a quem pertence o dado financeiro; isolamento e autorização                   |
+| `createdByUserId`           | **Autor** — quem criou o registro (workspace, convite, etc.); auditoria                                 |
+| `paidByMemberId` _(futuro)_ | **Quem pagou** — atribuição pessoal dentro do workspace compartilhado (ex.: “Leandro pagou este gasto”) |
 
 Exemplo: uma `Transaction` tem `workspaceId` (visível a todos os membros com permissão), pode registrar `createdByUserId` (quem lançou) e, no futuro, `paidByMemberId` (quem efetivamente pagou), sem transferir ownership do dado para o usuário.
 
@@ -125,24 +125,54 @@ Interface S3-compatible. Localmente: MinIO. Anexos privados com URLs temporária
 
 `EventBus` in-memory para desenvolvimento/testes. Evolução futura pode usar outbox + broker, sem acoplar o domínio a Kafka/RabbitMQ agora.
 
-## Autenticação BFF no Next.js (Etapa 3)
+## Autenticação BFF no Next.js (Etapas 3–4)
 
 A web **não** armazena tokens no browser. O BFF (`apps/web/src/app/api/bff/`) atua como proxy autenticado para a API Fastify.
 
-| Cookie | HttpOnly | Path | Função |
-|--------|----------|------|--------|
-| `pp_access_token` | Sim | `/` | JWT de acesso (~15 min) |
-| `pp_refresh_token` | Sim | `/api/bff/auth` | Refresh opaco (path restrito) |
-| `pp_workspace_id` | Não | `/` | ID do planejamento selecionado (UI) |
+| Cookie             | HttpOnly | Path | Função                                                          |
+| ------------------ | -------- | ---- | --------------------------------------------------------------- |
+| `pp_access_token`  | Sim      | `/`  | JWT de acesso (~15 min)                                         |
+| `pp_refresh_token` | Sim      | `/`  | Refresh opaco (mesma origem; Path não é fronteira de segurança) |
+| `pp_workspace_id`  | Não      | `/`  | ID do planejamento selecionado (UI)                             |
 
 Fluxo:
 
 1. Login/registro via `POST /api/bff/auth/login` ou `register` → BFF grava cookies HttpOnly; a resposta JSON **não** expõe tokens.
 2. Rotas BFF de domínio usam `authenticatedProxy`: lê o access token do cookie, encaminha `Authorization: Bearer` e `X-Workspace-Id` à API.
-3. Em **401**, o BFF tenta **refresh uma única vez** (`refreshOnce` com mutex) e repete a requisição original; falha → 401 ao cliente.
-4. Middleware de borda verifica presença de cookie de sessão nas rotas protegidas; ausência redireciona para `/login?next=`.
+3. Em **401**, o BFF tenta **refresh uma única vez** (Map de Promises indexado por SHA-256 do refresh token da requisição atual — sessões distintas não compartilham Promise) e repete a requisição original; falha → limpa cookies e retorna 401.
+4. Middleware de borda verifica presença de cookie de sessão nas rotas protegidas; com Path=/, o refresh cookie chega ao middleware; a API permanece a autoridade real.
 
 Detalhes: [ADR-014](./docs/adr/ADR-014-nextjs-bff-authentication.md).
+
+## Planejamento mensal (Etapa 4)
+
+**Planning** = intenção (orçamento do mês). **Ledger** = fatos reais (ainda não implementado). A UI não mostra “realizado” fictício.
+
+### Modelo
+
+- `MonthlyPlan`: único por `(workspaceId, year, month)`; `year`/`month` inteiros (não DateTime); `version` para concorrência otimista.
+- `MonthlyPlanItem`: valor planejado **somente na subcategoria** (`plannedAmountInCents` BigInt ≥ 0); ausência = zero (armazenamento esparso).
+- Totais de categoria / receitas / gastos / saldo previsto são **calculados no backend**.
+- Receitas usam `Category.type = income` (subcategorias = fontes visuais); gastos usam `expense`. Sem entidade `IncomeSource` nesta etapa.
+- Taxonomia arquivada com valor histórico permanece visível (somente leitura) naquele mês.
+
+### Dinheiro na API
+
+- Domínio/banco: `bigint` em centavos.
+- HTTP: string só com dígitos (`"178609"`). Saldo previsto pode ser negativo (`"-100"`).
+- Utilitários: `parseCentsString`, `formatCentsToBRL`, `parseBRLInputToCents` em `@pp-planning/contracts`.
+
+### Endpoints
+
+- `GET /v1/planning/monthly/:year/:month` — `planning.read`
+- `PUT /v1/planning/monthly/:year/:month` — `planning.write` (body: `expectedVersion`, `items`; retorna plano completo)
+- `POST /v1/planning/monthly/:year/:month/copy-previous` — `planning.write` (`overwrite`, `expectedVersion`)
+
+BFF: `/api/bff/planning/monthly/:year/:month` (+ `/copy-previous`).
+
+Web: `/planejamento?ano=2026&mes=7&aba=resumo|receitas|gastos`.
+
+ADRs: [ADR-016](./docs/adr/ADR-016-monthly-planning-model.md), [ADR-017](./docs/adr/ADR-017-planning-optimistic-concurrency.md).
 
 ## Seleção de workspace na web
 
@@ -164,6 +194,7 @@ apps/web/src/app/
 │   └── convites/[token]/
 ├── (app)/             # Layout com sidebar, seletor de workspace, navegação
 │   ├── inicio/
+│   ├── planejamento/
 │   └── configuracoes/
 │       ├── categorias/
 │       └── pessoas/
@@ -190,10 +221,10 @@ Detalhes de ciclo de vida: [ADR-015](./docs/adr/ADR-015-category-subcategory-lif
 
 ## Inativação vs “Arquivar” (terminologia)
 
-| Camada | Termo | Implementação |
-|--------|-------|---------------|
-| UI (pt-BR) | **Arquivar** / **Arquivada** | Botão e badge na lista de categorias |
-| API / domínio | `inactivate` / `reactivate` | `isActive = false` / `true` |
-| Subcategoria inativa | Badge **Inativa** | Mesma flag `isActive`; sem rótulo “Arquivada” na UI atual |
+| Camada               | Termo                        | Implementação                                             |
+| -------------------- | ---------------------------- | --------------------------------------------------------- |
+| UI (pt-BR)           | **Arquivar** / **Arquivada** | Botão e badge na lista de categorias                      |
+| API / domínio        | `inactivate` / `reactivate`  | `isActive = false` / `true`                               |
+| Subcategoria inativa | Badge **Inativa**            | Mesma flag `isActive`; sem rótulo “Arquivada” na UI atual |
 
 Não há exclusão física de Category ou Subcategory. Inativar preserva histórico e unicidade do nome normalizado. Categoria arquivada não aceita novas subcategorias; subcategorias ativas deixam de aparecer em seleções operacionais enquanto a categoria pai estiver inativa.

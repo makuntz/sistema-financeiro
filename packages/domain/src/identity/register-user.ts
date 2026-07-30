@@ -54,10 +54,7 @@ export class RegisterUser {
 
     const existing = await this.users.findByNormalizedEmail(email.normalized);
     if (existing) {
-      throw new DomainError(
-        'EMAIL_ALREADY_IN_USE',
-        'Já existe uma conta com este e-mail.',
-      );
+      throw new DomainError('EMAIL_ALREADY_IN_USE', 'Já existe uma conta com este e-mail.');
     }
 
     const passwordHash = await this.passwordHasher.hash(input.password);

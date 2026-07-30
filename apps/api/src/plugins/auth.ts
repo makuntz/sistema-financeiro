@@ -1,5 +1,10 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { TokenService, SessionRepository, WorkspaceMemberRepository, Permission } from '@pp-planning/domain';
+import type {
+  TokenService,
+  SessionRepository,
+  WorkspaceMemberRepository,
+  Permission,
+} from '@pp-planning/domain';
 import { permissionsForRole } from '@pp-planning/domain';
 import type { AuthContext, WorkspaceContext } from '../shared/contexts.js';
 import { AppError } from '../shared/errors.js';
@@ -68,18 +73,17 @@ export function createAuthHandlers(deps: AuthPluginDeps) {
   }
 
   function requirePermission(permission: Permission) {
-    return async function checkPermission(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+    return async function checkPermission(
+      request: FastifyRequest,
+      _reply: FastifyReply,
+    ): Promise<void> {
       const ctx = request.workspace;
       if (!ctx) {
         throw new AppError('WORKSPACE_REQUIRED', 'Contexto de workspace ausente.', 400);
       }
 
       if (!ctx.permissions.includes(permission)) {
-        throw new AppError(
-          'INSUFFICIENT_PERMISSION',
-          `Permissão '${permission}' necessária.`,
-          403,
-        );
+        throw new AppError('INSUFFICIENT_PERMISSION', `Permissão '${permission}' necessária.`, 403);
       }
     };
   }

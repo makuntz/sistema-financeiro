@@ -51,7 +51,9 @@ export type WorkspaceRoutesDeps = {
   invitationRepository: WorkspaceInvitationRepository;
   authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   requireWorkspace: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  requirePermission: (permission: Permission) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requirePermission: (
+    permission: Permission,
+  ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   webUrl: string;
 };
 
@@ -298,9 +300,7 @@ export async function registerWorkspaceRoutes(
       preHandler: [authenticate, requireWorkspace, requirePermission('invitations.read')],
     },
     async (request) => {
-      const items = await deps.invitationRepository.listByWorkspace(
-        request.workspace!.workspaceId,
-      );
+      const items = await deps.invitationRepository.listByWorkspace(request.workspace!.workspaceId);
 
       return { data: items.map(presentInvitation) };
     },

@@ -49,6 +49,16 @@ const DOMAIN_CODE_STATUS: Record<string, number> = {
   MEMBER_NOT_FOUND: 404,
   WORKSPACE_NOT_FOUND: 404,
   CATEGORY_INACTIVE: 400,
+  PLAN_VERSION_CONFLICT: 409,
+  PLAN_ALREADY_HAS_VALUES: 409,
+  PREVIOUS_PLAN_NOT_FOUND: 404,
+  PLAN_SUBCATEGORY_NOT_FOUND: 404,
+  PLAN_CATEGORY_INACTIVE: 400,
+  PLAN_SUBCATEGORY_INACTIVE: 400,
+  PLAN_WORKSPACE_MISMATCH: 400,
+  PLAN_ITEM_DUPLICATED: 400,
+  PLAN_AMOUNT_INVALID: 400,
+  INVALID_PLAN_PERIOD: 400,
 };
 
 type FastifyLikeError = Error & {
@@ -71,14 +81,9 @@ export function toAppError(error: unknown): AppError {
     const fastifyError = error as FastifyLikeError;
 
     if (fastifyError.validation || fastifyError.statusCode === 400) {
-      return new AppError(
-        'VALIDATION_ERROR',
-        fastifyError.message || 'Dados inválidos.',
-        400,
-        {
-          validation: fastifyError.validation ?? null,
-        },
-      );
+      return new AppError('VALIDATION_ERROR', fastifyError.message || 'Dados inválidos.', 400, {
+        validation: fastifyError.validation ?? null,
+      });
     }
 
     if (typeof fastifyError.statusCode === 'number' && fastifyError.statusCode < 500) {

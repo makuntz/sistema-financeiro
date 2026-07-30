@@ -2,20 +2,20 @@
 
 Sistema de planejamento financeiro pessoal e familiar (nome provisório).
 
-Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites pela interface.
+Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites. A **Etapa 4** entrega o **Planejamento Mensal** (orçamento por subcategoria) e corrige o refresh do BFF.
 
 ## Stack
 
-| Camada | Tecnologia |
-|--------|------------|
-| Monorepo | pnpm workspaces + Turborepo |
-| Linguagem | TypeScript (strict) |
-| API | Node.js, Fastify, Zod, OpenAPI, Prisma |
-| Banco | PostgreSQL |
-| Arquivos (local) | MinIO (S3-compatible) |
-| Web | Next.js (App Router), React, Tailwind |
-| Mobile | React Native, Expo, Expo Router |
-| Testes | Vitest |
+| Camada           | Tecnologia                             |
+| ---------------- | -------------------------------------- |
+| Monorepo         | pnpm workspaces + Turborepo            |
+| Linguagem        | TypeScript (strict)                    |
+| API              | Node.js, Fastify, Zod, OpenAPI, Prisma |
+| Banco            | PostgreSQL                             |
+| Arquivos (local) | MinIO (S3-compatible)                  |
+| Web              | Next.js (App Router), React, Tailwind  |
+| Mobile           | React Native, Expo, Expo Router        |
+| Testes           | Vitest                                 |
 
 ## Estrutura
 
@@ -96,10 +96,10 @@ Esta etapa adiciona cadastro/login, sessões com JWT, workspaces com membros e c
 
 Após `pnpm db:seed`:
 
-| Conta | E-mail | Senha | Papel no workspace demo |
-|-------|--------|-------|-------------------------|
-| Demo Owner | `demo.owner@pp-planning.local` | `demo-senha-segura` | `owner` |
-| Demo Viewer | `demo.viewer@pp-planning.local` | `demo-senha-segura` | `viewer` |
+| Conta       | E-mail                          | Senha               | Papel no workspace demo |
+| ----------- | ------------------------------- | ------------------- | ----------------------- |
+| Demo Owner  | `demo.owner@pp-planning.local`  | `demo-senha-segura` | `owner`                 |
+| Demo Viewer | `demo.viewer@pp-planning.local` | `demo-senha-segura` | `viewer`                |
 
 Workspace criado pelo seed: **Planejamento Familiar Demo** (o ID é exibido no terminal após o seed).
 
@@ -210,9 +210,9 @@ Em terminais separados, rode `pnpm dev:api` e `pnpm dev:web` (ou use `pnpm dev` 
 1. Abra [http://localhost:3000/login](http://localhost:3000/login).
 2. Use as credenciais demo (após `pnpm db:seed`):
 
-| Conta | E-mail | Senha |
-|-------|--------|-------|
-| Demo Owner | `demo.owner@pp-planning.local` | `demo-senha-segura` |
+| Conta       | E-mail                          | Senha               |
+| ----------- | ------------------------------- | ------------------- |
+| Demo Owner  | `demo.owner@pp-planning.local`  | `demo-senha-segura` |
 | Demo Viewer | `demo.viewer@pp-planning.local` | `demo-senha-segura` |
 
 O owner pode gerenciar categorias e convites; o viewer tem acesso somente leitura.
@@ -241,22 +241,45 @@ Para arquivar ou reativar uma categoria, use o ícone de arquivo na linha da cat
 
 A pessoa convidada deve cadastrar-se ou entrar com o **mesmo e-mail** do convite e aceitar em `http://localhost:3000/convites/<token>`.
 
-### Seed — categorias de exemplo
+### Planejamento mensal (web)
 
-Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria categorias de despesa com subcategorias:
+1. Abra **Planejamento** no menu (`/planejamento`) ou use a URL com período: `/planejamento?ano=2026&mes=7&aba=resumo`.
+2. Navegue entre meses com as setas (timezone padrão do workspace: `America/Sao_Paulo`).
+3. Abas: **Resumo**, **Receitas** (categorias `income`), **Gastos** (categorias `expense`).
+4. **Editar planejamento** transforma valores das subcategorias em inputs `R$`; totais de categoria e cards superiores atualizam localmente. **Salvar alterações** envia só itens de subcategoria — totais são recalculados no backend.
+5. **Copiar mês anterior** replica valores ativos; se o destino já tiver valores, a UI pede confirmação (`overwrite=true`).
+6. Viewer: somente leitura (sem editar/copiar).
+7. Concorrência: se outra pessoa salvou primeiro, a API retorna `PLAN_VERSION_CONFLICT` e a tela oferece **Recarregar planejamento**.
 
-| Categoria | Subcategorias (exemplos) |
-|-----------|--------------------------|
-| Mantimentos | Mercado semanal, Feira, Padaria, Açougue |
-| Saúde | Plano de saúde, Farmácia, Consultas, Exames |
-| Transporte | Combustível, Estacionamento, Transporte público, Manutenção veículo |
-| Moradia | Aluguel, Condomínio, Energia, Água, Internet |
+Receitas e gastos usam a mesma taxonomia (`Category.type`). Não há “realizado” nesta etapa — isso será o Ledger.
+
+### Testar concorrência (dois usuários)
+
+1. Faça login como owner em um navegador e como outro membro/owner em outro (ou janela anônima).
+2. Abra o mesmo mês em ambos, edite valores diferentes e salve no primeiro.
+3. Ao salvar no segundo com a versão antiga, deve aparecer o conflito — sem sobrescrita silenciosa.
+
+### Seed — categorias e planos demo
+
+Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria categorias de despesa e receita, e planos do mês atual e do mês anterior (America/Sao_Paulo). O terminal imprime o ano/mês criados. O seed é **idempotente** — pode rodar duas vezes.
+
+| Tipo    | Categoria       | Subcategorias (exemplos)                                            |
+| ------- | --------------- | ------------------------------------------------------------------- |
+| Despesa | Mantimentos     | Mercado semanal, Feira, Padaria, Açougue                            |
+| Despesa | Saúde           | Plano de saúde, Farmácia, Consultas, Exames                         |
+| Despesa | Transporte      | Combustível, Estacionamento, Transporte público, Manutenção veículo |
+| Despesa | Moradia         | Aluguel, Condomínio, Energia, Água, Internet                        |
+| Receita | Salários        | Salário principal, Segunda renda                                    |
+| Receita | Benefícios      | Vale-alimentação, Reembolsos                                        |
+| Receita | Outras receitas | Rendimentos, Receitas extras                                        |
 
 ## Documentação
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 - [Diagramas](./docs/diagrams/)
 - [ADRs](./docs/adr/)
+- [ADR-016 Planejamento mensal](./docs/adr/ADR-016-monthly-planning-model.md)
+- [ADR-017 Concorrência otimista](./docs/adr/ADR-017-planning-optimistic-concurrency.md)
 - [Glossário](./docs/product/domain-glossary.md)
 - [Modelo de dados](./docs/architecture/data-model.md)
 - [Design system](./docs/architecture/design-system.md)

@@ -19,6 +19,8 @@ export type Permission =
   | 'taxonomy.create'
   | 'taxonomy.update'
   | 'taxonomy.inactivate'
+  | 'planning.read'
+  | 'planning.write'
   | 'financial.read'
   | 'financial.write';
 
@@ -35,6 +37,8 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
     'taxonomy.create',
     'taxonomy.update',
     'taxonomy.inactivate',
+    'planning.read',
+    'planning.write',
     'financial.read',
     'financial.write',
   ],
@@ -50,6 +54,8 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
     'taxonomy.create',
     'taxonomy.update',
     'taxonomy.inactivate',
+    'planning.read',
+    'planning.write',
     'financial.read',
     'financial.write',
   ],
@@ -60,10 +66,12 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
     'taxonomy.create',
     'taxonomy.update',
     'taxonomy.inactivate',
+    'planning.read',
+    'planning.write',
     'financial.read',
     'financial.write',
   ],
-  viewer: ['workspace.read', 'members.read', 'taxonomy.read', 'financial.read'],
+  viewer: ['workspace.read', 'members.read', 'taxonomy.read', 'planning.read', 'financial.read'],
 };
 
 export function permissionsForRole(role: WorkspaceRole): readonly Permission[] {

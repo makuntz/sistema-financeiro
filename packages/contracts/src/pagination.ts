@@ -17,10 +17,7 @@ export type PaginatedResponse<T> = {
   };
 };
 
-export function paginate<T>(
-  items: T[],
-  query: PaginationQuery,
-): PaginatedResponse<T> {
+export function paginate<T>(items: T[], query: PaginationQuery): PaginatedResponse<T> {
   const totalItems = items.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / query.pageSize));
   const start = (query.page - 1) * query.pageSize;

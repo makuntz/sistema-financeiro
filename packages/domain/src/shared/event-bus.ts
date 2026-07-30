@@ -10,7 +10,10 @@ export interface EventBus {
 }
 
 export class InMemoryEventBus implements EventBus {
-  private readonly handlers = new Map<string, Array<(event: DomainEvent) => Promise<void> | void>>();
+  private readonly handlers = new Map<
+    string,
+    Array<(event: DomainEvent) => Promise<void> | void>
+  >();
 
   async publish(event: DomainEvent): Promise<void> {
     const handlers = this.handlers.get(event.name) ?? [];

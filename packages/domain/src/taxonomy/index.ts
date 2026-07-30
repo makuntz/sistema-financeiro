@@ -20,7 +20,13 @@ export { Subcategory, SubcategoryName, type SubcategoryProps } from './subcatego
 export { type SubcategoryRepository } from './subcategory-repository.js';
 export { CreateSubcategory, type CreateSubcategoryInput } from './create-subcategory.js';
 export { UpdateSubcategory, type UpdateSubcategoryInput } from './update-subcategory.js';
-export { InactivateSubcategory, type InactivateSubcategoryInput } from './inactivate-subcategory.js';
-export { ReactivateSubcategory, type ReactivateSubcategoryInput } from './reactivate-subcategory.js';
+export {
+  InactivateSubcategory,
+  type InactivateSubcategoryInput,
+} from './inactivate-subcategory.js';
+export {
+  ReactivateSubcategory,
+  type ReactivateSubcategoryInput,
+} from './reactivate-subcategory.js';
 export { ListSubcategories, type ListSubcategoriesInput } from './list-subcategories.js';
 export { InMemorySubcategoryRepository } from './in-memory-subcategory-repository.js';

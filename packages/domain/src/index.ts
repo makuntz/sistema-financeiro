@@ -3,3 +3,4 @@ export * from './shared/audit.js';
 export * from './taxonomy/index.js';
 export * from './identity/index.js';
 export * from './workspaces/index.js';
+export * from './planning/index.js';

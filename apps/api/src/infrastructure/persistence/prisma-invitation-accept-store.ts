@@ -2,10 +2,7 @@ import type { PrismaClient } from '@pp-planning/database';
 import type { WorkspaceInvitation, WorkspaceMember } from '@pp-planning/domain';
 
 export type InvitationAcceptStore = {
-  accept(input: {
-    invitation: WorkspaceInvitation;
-    membership: WorkspaceMember;
-  }): Promise<void>;
+  accept(input: { invitation: WorkspaceInvitation; membership: WorkspaceMember }): Promise<void>;
 };
 
 export class PrismaInvitationAcceptStore implements InvitationAcceptStore {

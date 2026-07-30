@@ -133,10 +133,7 @@ export class WorkspaceAuthorizationPolicy {
   }): void {
     if (input.isSelfLeave) {
       if (input.targetRole === 'owner' && input.activeOwnerCount <= 1) {
-        throw new DomainError(
-          'LAST_OWNER_REQUIRED',
-          'O último owner não pode sair do workspace.',
-        );
+        throw new DomainError('LAST_OWNER_REQUIRED', 'O último owner não pode sair do workspace.');
       }
       return;
     }
@@ -144,10 +141,7 @@ export class WorkspaceAuthorizationPolicy {
     this.assertPermission(input.actorRole, 'members.manage');
 
     if (input.actorRole === 'admin' && input.targetRole === 'owner') {
-      throw new DomainError(
-        'INSUFFICIENT_PERMISSION',
-        'Administradores não podem remover owners.',
-      );
+      throw new DomainError('INSUFFICIENT_PERMISSION', 'Administradores não podem remover owners.');
     }
 
     if (input.targetRole === 'owner' && input.activeOwnerCount <= 1) {

@@ -13,7 +13,10 @@ export type AuditEventName =
   | 'UserLoggedIn'
   | 'SessionRefreshed'
   | 'SessionRevoked'
-  | 'WorkspaceAccessDenied';
+  | 'WorkspaceAccessDenied'
+  | 'MonthlyPlanCreated'
+  | 'MonthlyPlanUpdated'
+  | 'MonthlyPlanCopiedFromPreviousMonth';
 
 export type AuditEvent = {
   name: AuditEventName;

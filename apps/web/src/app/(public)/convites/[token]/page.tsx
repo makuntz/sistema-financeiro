@@ -120,11 +120,15 @@ export default function InvitePage() {
 
         {preview && !preview.expired && (
           <>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            <p
+              style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}
+            >
               <strong>{preview.inviterName}</strong> convidou você para participar do planejamento{' '}
               <strong>{preview.workspaceName}</strong>.
             </p>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+            <p
+              style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '1.5rem' }}
+            >
               Email do convite: {preview.email}
             </p>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -144,7 +148,9 @@ export default function InvitePage() {
         )}
 
         {preview?.expired && (
-          <Alert variant="warning">Este convite expirou. Solicite um novo convite ao administrador.</Alert>
+          <Alert variant="warning">
+            Este convite expirou. Solicite um novo convite ao administrador.
+          </Alert>
         )}
       </Card>
     </div>

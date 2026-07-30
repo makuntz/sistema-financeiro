@@ -13,15 +13,11 @@ describe('Category entity', () => {
 
   describe('create', () => {
     it('valida cor inválida', () => {
-      expect(() =>
-        Category.create({ ...validInput, color: 'red' }),
-      ).toThrow();
+      expect(() => Category.create({ ...validInput, color: 'red' })).toThrow();
     });
 
     it('valida ícone inválido', () => {
-      expect(() =>
-        Category.create({ ...validInput, icon: 'invalid-icon' }),
-      ).toThrow();
+      expect(() => Category.create({ ...validInput, icon: 'invalid-icon' })).toThrow();
     });
 
     it('cria com cor e ícone válidos', () => {
