@@ -1,0 +1,16 @@
+{
+  "extends": "../config/tsconfig/react.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "noEmit": false,
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src/**/*"]
+}

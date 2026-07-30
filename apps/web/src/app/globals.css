@@ -1,0 +1,19 @@
+@import '@pp-planning/design-tokens/css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(13, 148, 136, 0.12), transparent 40%),
+    linear-gradient(180deg, var(--background-default), var(--background-subtle));
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}

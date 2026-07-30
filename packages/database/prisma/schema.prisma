@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CategoryType {
+  income
+  expense
+}
+
+/// Entidade fundamental para validar a arquitetura do módulo Taxonomy.
+/// Demais entidades do domínio serão adicionadas em etapas posteriores.
+model Category {
+  id          String       @id @db.Uuid
+  workspaceId String       @map("workspace_id") @db.Uuid
+  name        String
+  type        CategoryType
+  color       String
+  icon        String
+  order       Int          @default(0)
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, type, name])
+  @@index([workspaceId, isActive])
+  @@map("categories")
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@pp-planning/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pp-planning/api-client": "workspace:*",
+    "@pp-planning/contracts": "workspace:^",
+    "@pp-planning/design-tokens": "workspace:*",
+    "@pp-planning/ui-mobile": "workspace:*",
+    "expo": "~52.0.23",
+    "expo-constants": "~17.0.3",
+    "expo-linking": "~7.0.3",
+    "expo-router": "~4.0.15",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "~18.3.18",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2",
+    "vitest": "^2.1.8"
+  }
+}

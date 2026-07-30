@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pp_planning
+          POSTGRES_PASSWORD: pp_planning_dev
+          POSTGRES_DB: pp_planning
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pp_planning -d pp_planning"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      PORT: 3333
+      DATABASE_URL: postgresql://pp_planning:pp_planning_dev@localhost:5432/pp_planning?schema=public
+      WEB_URL: http://localhost:3000
+      API_URL: http://localhost:3333
+      MOBILE_API_URL: http://localhost:3333
+      JWT_SECRET: ci-secret-at-least-16-chars
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: pp-planning
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      NEXT_PUBLIC_API_URL: http://localhost:3333
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Run migrations
+        run: pnpm db:migrate:deploy
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

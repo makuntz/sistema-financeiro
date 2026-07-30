@@ -1,0 +1,42 @@
+:root {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-500: #64748b;
+  --color-slate-700: #334155;
+  --color-slate-900: #0f172a;
+  --color-teal-600: #0d9488;
+  --color-teal-700: #0f766e;
+  --color-emerald-600: #059669;
+  --color-rose-600: #e11d48;
+  --color-amber-500: #f59e0b;
+  --color-white: #ffffff;
+
+  --background-default: var(--color-slate-50);
+  --background-subtle: var(--color-slate-100);
+  --background-inverse: var(--color-slate-900);
+  --text-primary: var(--color-slate-900);
+  --text-secondary: var(--color-slate-500);
+  --text-inverse: var(--color-white);
+  --border-default: var(--color-slate-200);
+  --action-primary: var(--color-teal-700);
+  --action-primary-hover: var(--color-teal-600);
+  --financial-income: var(--color-emerald-600);
+  --financial-expense: var(--color-rose-600);
+  --financial-balance: var(--color-slate-700);
+  --financial-warning: var(--color-amber-500);
+  --financial-positive: var(--color-emerald-600);
+  --financial-negative: var(--color-rose-600);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+}

@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "PP Planning",
+    "slug": "pp-planning",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ppplanning",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ppplanning.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F766E"
+      },
+      "package": "com.ppplanning.app"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3333"
+    }
+  }
+}

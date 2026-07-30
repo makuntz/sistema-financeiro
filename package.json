@@ -1,0 +1,45 @@
+{
+  "name": "pp-planning",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PP Planning — sistema de planejamento financeiro pessoal e familiar",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=@pp-planning/api",
+    "dev:web": "turbo run dev --filter=@pp-planning/web",
+    "dev:mobile": "turbo run dev --filter=@pp-planning/mobile",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:generate": "pnpm --filter @pp-planning/database generate",
+    "db:migrate": "pnpm --filter @pp-planning/database migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @pp-planning/database migrate:deploy",
+    "db:seed": "pnpm --filter @pp-planning/database seed",
+    "db:studio": "pnpm --filter @pp-planning/database studio",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "infra:reset": "docker compose down -v && docker compose up -d"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "18.3.18",
+      "@types/react-dom": "18.3.5"
+    }
+  }
+}
