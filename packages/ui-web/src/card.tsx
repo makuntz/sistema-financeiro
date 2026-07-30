@@ -10,11 +10,11 @@ export function Card({ children, title, style }: CardProps) {
   return (
     <section
       style={{
-        background: 'var(--color-white)',
+        background: 'var(--surface-default)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-lg)',
         padding: '1.25rem',
-        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+        boxShadow: 'var(--shadow-sm)',
         ...style,
       }}
     >
@@ -23,7 +23,7 @@ export function Card({ children, title, style }: CardProps) {
           style={{
             margin: '0 0 0.75rem',
             fontFamily: 'var(--font-display)',
-            fontSize: '1.25rem',
+            fontSize: '1.1rem',
             color: 'var(--text-primary)',
           }}
         >

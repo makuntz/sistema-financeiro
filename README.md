@@ -2,7 +2,7 @@
 
 Sistema de planejamento financeiro pessoal e familiar (nome provisório).
 
-Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação.
+Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites pela interface.
 
 ## Stack
 
@@ -51,7 +51,7 @@ Edite `.env` conforme necessário. Variáveis obrigatórias são validadas com Z
 pnpm infra:up          # PostgreSQL + MinIO
 pnpm db:generate       # Prisma Client
 pnpm db:migrate        # Migrações
-pnpm db:seed           # Seeds de desenvolvimento (credenciais demo)
+pnpm db:seed           # Seeds de desenvolvimento (credenciais demo + categorias exemplo)
 ```
 
 - PostgreSQL: `localhost:5433` (porta host configurável via `POSTGRES_PORT`; padrão do compose é 5432 se livre)
@@ -185,6 +185,72 @@ Outras ações de membership:
 4. Clique em **Authorize** e informe `Bearer <accessToken>`.
 5. Para rotas de workspace/categorias, adicione o header **`X-Workspace-Id`** (campo disponível nas rotas protegidas ou via "Try it out" nos headers).
 6. Fluxo sugerido: login → listar workspaces → copiar `id` → criar convite → login como convidado → aceitar convite → listar categorias no workspace compartilhado.
+
+## Etapa 3 — Web com BFF, categorias e convites na interface
+
+A aplicação web consome a API exclusivamente via **Next.js BFF** (`/api/bff/*`). Tokens de sessão ficam em **cookies HttpOnly** — nunca em `localStorage` ou `sessionStorage`.
+
+### Subir API + web
+
+Ordem recomendada para desenvolvimento local:
+
+```bash
+pnpm infra:up          # PostgreSQL + MinIO
+pnpm db:generate       # Prisma Client
+pnpm db:migrate        # Migrações
+pnpm db:seed           # Usuários demo + categorias exemplo
+pnpm dev:api           # http://localhost:3333  (docs: /docs)
+pnpm dev:web           # http://localhost:3000
+```
+
+Em terminais separados, rode `pnpm dev:api` e `pnpm dev:web` (ou use `pnpm dev` para subir tudo via Turborepo).
+
+### Login na web
+
+1. Abra [http://localhost:3000/login](http://localhost:3000/login).
+2. Use as credenciais demo (após `pnpm db:seed`):
+
+| Conta | E-mail | Senha |
+|-------|--------|-------|
+| Demo Owner | `demo.owner@pp-planning.local` | `demo-senha-segura` |
+| Demo Viewer | `demo.viewer@pp-planning.local` | `demo-senha-segura` |
+
+O owner pode gerenciar categorias e convites; o viewer tem acesso somente leitura.
+
+> **Autenticação:** o login grava `pp_access_token` e `pp_refresh_token` em cookies HttpOnly via BFF. O JavaScript da página **não** lê nem armazena tokens — apenas chama `fetch('/api/bff/...')` e o servidor repassa credenciais à API.
+
+### Trocar de planejamento (workspace)
+
+Na barra lateral, clique no nome do planejamento atual (seletor no topo). Escolha outro workspace na lista ou use **Criar planejamento** para um novo.
+
+A seleção chama `POST /api/bff/workspaces/select` e grava o cookie `pp_workspace_id` (preferência de contexto). A API continua validando membership a cada requisição — trocar o cookie não concede acesso a um workspace sem vínculo.
+
+### Criar categoria e subcategoria
+
+1. Acesse **Categorias** no menu (`/configuracoes/categorias`).
+2. **Nova categoria**: informe nome, tipo (Receita/Despesa), cor e ícone.
+3. **Subcategoria**: expanda a categoria (seta) → **Adicionar subcategoria** → informe o nome.
+
+Para arquivar ou reativar uma categoria, use o ícone de arquivo na linha da categoria. Na interface o termo é **Arquivar**; na API/domínio a operação é `inactivate` / `reactivate` (sem exclusão física).
+
+### Convidar uma pessoa (interface web)
+
+1. Acesse **Pessoas e acesso** (`/configuracoes/pessoas`) — requer papel `owner` ou `admin`.
+2. Clique em **Convidar**, informe o e-mail e o papel (Administrador, Membro ou Somente leitura).
+3. O convite aparece em **Convites pendentes**. Envio de e-mail ainda não está implementado — use a API (`invitationLink` na resposta de `POST /v1/workspaces/current/invitations`) ou o fluxo de convite em `/convites/<token>` para testes.
+
+A pessoa convidada deve cadastrar-se ou entrar com o **mesmo e-mail** do convite e aceitar em `http://localhost:3000/convites/<token>`.
+
+### Seed — categorias de exemplo
+
+Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria categorias de despesa com subcategorias:
+
+| Categoria | Subcategorias (exemplos) |
+|-----------|--------------------------|
+| Mantimentos | Mercado semanal, Feira, Padaria, Açougue |
+| Saúde | Plano de saúde, Farmácia, Consultas, Exames |
+| Transporte | Combustível, Estacionamento, Transporte público, Manutenção veículo |
+| Moradia | Aluguel, Condomínio, Energia, Água, Internet |
 
 ## Documentação
 

@@ -78,6 +78,93 @@ async function main(): Promise<void> {
     update: { role: 'viewer', isActive: true },
   });
 
+  const seedCategories = [
+    {
+      name: 'Mantimentos',
+      type: 'expense' as const,
+      color: '#16A34A',
+      icon: 'shopping-cart',
+      subcategories: ['Mercado semanal', 'Feira', 'Padaria', 'Açougue'],
+    },
+    {
+      name: 'Saúde',
+      type: 'expense' as const,
+      color: '#DC2626',
+      icon: 'heart',
+      subcategories: ['Plano de saúde', 'Farmácia', 'Consultas', 'Exames'],
+    },
+    {
+      name: 'Transporte',
+      type: 'expense' as const,
+      color: '#2563EB',
+      icon: 'car',
+      subcategories: ['Combustível', 'Estacionamento', 'Transporte público', 'Manutenção veículo'],
+    },
+    {
+      name: 'Moradia',
+      type: 'expense' as const,
+      color: '#9333EA',
+      icon: 'home',
+      subcategories: ['Aluguel', 'Condomínio', 'Energia', 'Água', 'Internet'],
+    },
+  ];
+
+  for (const cat of seedCategories) {
+    const normalizedName = cat.name.trim().toLocaleLowerCase('pt-BR');
+    let category = await prisma.category.findUnique({
+      where: {
+        workspaceId_type_normalizedName: {
+          workspaceId: workspace.id,
+          type: cat.type,
+          normalizedName,
+        },
+      },
+    });
+
+    if (!category) {
+      category = await prisma.category.create({
+        data: {
+          id: randomUUID(),
+          workspaceId: workspace.id,
+          name: cat.name,
+          normalizedName,
+          type: cat.type,
+          color: cat.color,
+          icon: cat.icon,
+          order: 0,
+          isActive: true,
+        },
+      });
+    }
+
+    for (const subName of cat.subcategories) {
+      const subNormalized = subName.trim().toLocaleLowerCase('pt-BR');
+      const existing = await prisma.subcategory.findUnique({
+        where: {
+          workspaceId_categoryId_normalizedName: {
+            workspaceId: workspace.id,
+            categoryId: category.id,
+            normalizedName: subNormalized,
+          },
+        },
+      });
+
+      if (!existing) {
+        await prisma.subcategory.create({
+          data: {
+            id: randomUUID(),
+            workspaceId: workspace.id,
+            categoryId: category.id,
+            name: subName,
+            normalizedName: subNormalized,
+            order: 0,
+            isActive: true,
+          },
+        });
+      }
+    }
+  }
+
   console.log('Seed de desenvolvimento aplicado.');
   console.log(`Owner: ${ownerEmail} / ${password}`);
   console.log(`Viewer: ${viewerEmail} / ${password}`);

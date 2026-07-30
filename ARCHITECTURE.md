@@ -124,3 +124,76 @@ Interface S3-compatible. Localmente: MinIO. Anexos privados com URLs temporária
 ## Eventos internos
 
 `EventBus` in-memory para desenvolvimento/testes. Evolução futura pode usar outbox + broker, sem acoplar o domínio a Kafka/RabbitMQ agora.
+
+## Autenticação BFF no Next.js (Etapa 3)
+
+A web **não** armazena tokens no browser. O BFF (`apps/web/src/app/api/bff/`) atua como proxy autenticado para a API Fastify.
+
+| Cookie | HttpOnly | Path | Função |
+|--------|----------|------|--------|
+| `pp_access_token` | Sim | `/` | JWT de acesso (~15 min) |
+| `pp_refresh_token` | Sim | `/api/bff/auth` | Refresh opaco (path restrito) |
+| `pp_workspace_id` | Não | `/` | ID do planejamento selecionado (UI) |
+
+Fluxo:
+
+1. Login/registro via `POST /api/bff/auth/login` ou `register` → BFF grava cookies HttpOnly; a resposta JSON **não** expõe tokens.
+2. Rotas BFF de domínio usam `authenticatedProxy`: lê o access token do cookie, encaminha `Authorization: Bearer` e `X-Workspace-Id` à API.
+3. Em **401**, o BFF tenta **refresh uma única vez** (`refreshOnce` com mutex) e repete a requisição original; falha → 401 ao cliente.
+4. Middleware de borda verifica presença de cookie de sessão nas rotas protegidas; ausência redireciona para `/login?next=`.
+
+Detalhes: [ADR-014](./docs/adr/ADR-014-nextjs-bff-authentication.md).
+
+## Seleção de workspace na web
+
+O cookie `pp_workspace_id` é **apenas preferência de contexto** — legível pelo cliente para exibir o planejamento ativo na sidebar.
+
+- Troca: `POST /api/bff/workspaces/select` valida que o ID está em `GET /v1/workspaces` do usuário antes de gravar o cookie.
+- Cada chamada BFF repassa o valor como header `X-Workspace-Id` à API.
+- A API **sempre** valida membership ativo; cookie adulterado ou workspace sem vínculo → `403 WORKSPACE_ACCESS_DENIED`.
+
+Isso complementa a estratégia multi-workspace da Etapa 2: o frontend indica o contexto; a API permanece fonte da verdade.
+
+## Grupos de rotas App Router
+
+```
+apps/web/src/app/
+├── (public)/          # Sem layout autenticado
+│   ├── login/
+│   ├── cadastro/
+│   └── convites/[token]/
+├── (app)/             # Layout com sidebar, seletor de workspace, navegação
+│   ├── inicio/
+│   └── configuracoes/
+│       ├── categorias/
+│       └── pessoas/
+├── api/bff/           # Route Handlers — proxy autenticado
+└── page.tsx           # Raiz (pública)
+```
+
+- **`(public)`**: login, cadastro, preview/aceite de convite. Middleware permite acesso sem cookie de sessão (exceto redirecionamentos pós-login).
+- **`(app)`**: área autenticada com shell compartilhado (menu, seletor de planejamento, logout). Middleware exige `pp_access_token` ou `pp_refresh_token`.
+- **`/api/bff/*`**: allowlist explícita de rotas; sem proxy genérico aberto. Auth BFF (`/api/bff/auth/*`) e preview de convite são públicos ou semi-públicos conforme rota.
+
+## Categorias e subcategorias — listagem aninhada
+
+Para a tela de gestão, `GET /v1/categories` retorna categorias com **`subcategories` aninhadas** numa única consulta Prisma (`include`), evitando N+1 na primeira renderização.
+
+Mutations permanecem em endpoints dedicados:
+
+- Categoria: `POST/PATCH /v1/categories`, `POST .../inactivate`, `POST .../reactivate`
+- Subcategoria: `POST /v1/categories/:id/subcategories`, `PATCH /v1/subcategories/:id`, inactivate/reactivate
+
+O BFF espelha esses paths em `/api/bff/categories` e `/api/bff/subcategories`. A UI expande/colapsa subcategorias localmente; não há endpoint separado de listagem só de subcategorias nesta etapa.
+
+Detalhes de ciclo de vida: [ADR-015](./docs/adr/ADR-015-category-subcategory-lifecycle.md).
+
+## Inativação vs “Arquivar” (terminologia)
+
+| Camada | Termo | Implementação |
+|--------|-------|---------------|
+| UI (pt-BR) | **Arquivar** / **Arquivada** | Botão e badge na lista de categorias |
+| API / domínio | `inactivate` / `reactivate` | `isActive = false` / `true` |
+| Subcategoria inativa | Badge **Inativa** | Mesma flag `isActive`; sem rótulo “Arquivada” na UI atual |
+
+Não há exclusão física de Category ou Subcategory. Inativar preserva histórico e unicidade do nome normalizado. Categoria arquivada não aceita novas subcategorias; subcategorias ativas deixam de aparecer em seleções operacionais enquanto a categoria pai estiver inativa.

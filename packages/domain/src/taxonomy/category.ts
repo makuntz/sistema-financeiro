@@ -2,6 +2,43 @@ import { DomainError } from '../shared/domain-error.js';
 
 export type CategoryType = 'income' | 'expense';
 
+export const CATEGORY_ICON_ALLOWLIST = [
+  'tag',
+  'shopping-cart',
+  'heart',
+  'car',
+  'home',
+  'utensils',
+  'pill',
+  'dumbbell',
+  'briefcase',
+  'wallet',
+] as const;
+
+export type CategoryIcon = (typeof CATEGORY_ICON_ALLOWLIST)[number];
+
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+
+export function validateCategoryColor(color: string): void {
+  if (!HEX_COLOR_REGEX.test(color)) {
+    throw new DomainError(
+      'INVALID_CATEGORY_COLOR',
+      'A cor deve estar no formato #RRGGBB.',
+      { color },
+    );
+  }
+}
+
+export function validateCategoryIcon(icon: string): void {
+  if (!(CATEGORY_ICON_ALLOWLIST as readonly string[]).includes(icon)) {
+    throw new DomainError(
+      'INVALID_CATEGORY_ICON',
+      `Ícone inválido. Permitidos: ${CATEGORY_ICON_ALLOWLIST.join(', ')}.`,
+      { icon },
+    );
+  }
+}
+
 export type CategoryProps = {
   id: string;
   workspaceId: string;
@@ -70,14 +107,19 @@ export class Category {
     const name = CategoryName.create(input.name);
     const now = input.now ?? new Date();
 
+    const color = input.color ?? '#64748B';
+    const icon = input.icon ?? 'tag';
+    validateCategoryColor(color);
+    validateCategoryIcon(icon);
+
     return new Category({
       id: input.id,
       workspaceId: input.workspaceId,
       name: name.value,
       normalizedName: name.normalized,
       type: input.type,
-      color: input.color ?? '#64748B',
-      icon: input.icon ?? 'tag',
+      color,
+      icon,
       order: input.order ?? 0,
       isActive: true,
       createdAt: now,
@@ -133,10 +175,42 @@ export class Category {
     return this.props.updatedAt;
   }
 
+  update(input: { name?: string; color?: string; icon?: string; order?: number }, now: Date = new Date()): void {
+    if (input.name !== undefined) {
+      const categoryName = CategoryName.create(input.name);
+      this.props.name = categoryName.value;
+      this.props.normalizedName = categoryName.normalized;
+    }
+
+    if (input.color !== undefined) {
+      validateCategoryColor(input.color);
+      this.props.color = input.color;
+    }
+
+    if (input.icon !== undefined) {
+      validateCategoryIcon(input.icon);
+      this.props.icon = input.icon;
+    }
+
+    if (input.order !== undefined) {
+      this.props.order = input.order;
+    }
+
+    this.props.updatedAt = now;
+  }
+
   deactivate(now: Date = new Date()): void {
     this.props = {
       ...this.props,
       isActive: false,
+      updatedAt: now,
+    };
+  }
+
+  activate(now: Date = new Date()): void {
+    this.props = {
+      ...this.props,
+      isActive: true,
       updatedAt: now,
     };
   }

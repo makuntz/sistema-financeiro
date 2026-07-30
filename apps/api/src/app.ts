@@ -26,13 +26,13 @@ import {
   DeactivateMember,
   LeaveWorkspace,
   type CategoryRepository,
-  InMemoryCategoryRepository,
+  type SubcategoryRepository,
 } from '@pp-planning/domain';
 import type { Env } from '@pp-planning/config/env';
 import { registerErrorHandler } from './shared/error-handler.js';
 import { registerRequestId } from './shared/request-id.js';
 import { registerHealthRoute } from './modules/system/health-route.js';
-import { PrismaCategoryRepository, registerTaxonomyRoutes } from './modules/taxonomy/index.js';
+import { PrismaCategoryRepository, PrismaSubcategoryRepository, registerTaxonomyRoutes } from './modules/taxonomy/index.js';
 import { registerAuthRoutes } from './modules/identity/presentation/http/auth-routes.js';
 import { registerWorkspaceRoutes } from './modules/workspaces/presentation/http/workspace-routes.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
@@ -52,7 +52,7 @@ export type AppDependencies = {
   env: Env;
   prisma?: PrismaClient;
   categoryRepository?: CategoryRepository;
-  useInMemoryPersistence?: boolean;
+  subcategoryRepository?: SubcategoryRepository;
 };
 
 export type BuiltApp = {
@@ -62,12 +62,13 @@ export type BuiltApp = {
 
 export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
   const prisma = deps.prisma ?? createPrismaClient(deps.env.DATABASE_URL);
-  const useInMemory = deps.useInMemoryPersistence === true;
 
   // --- Repositories ---
-  const categoryRepository =
-    deps.categoryRepository ??
-    (useInMemory ? new InMemoryCategoryRepository() : new PrismaCategoryRepository(prisma));
+  const prismaCategoryRepo = new PrismaCategoryRepository(prisma);
+  const categoryRepository = deps.categoryRepository ?? prismaCategoryRepo;
+
+  const prismaSubcategoryRepo = new PrismaSubcategoryRepository(prisma);
+  const subcategoryRepository = deps.subcategoryRepository ?? prismaSubcategoryRepo;
 
   const userRepository = new PrismaUserRepository(prisma);
   const sessionRepository = new PrismaSessionRepository(prisma);
@@ -246,6 +247,8 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
 
   await registerTaxonomyRoutes(app, {
     categoryRepository,
+    categoryWithSubcategoriesProvider: prismaCategoryRepo,
+    subcategoryRepository,
     authenticate,
     requireWorkspace,
     requirePermission,

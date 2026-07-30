@@ -25,7 +25,7 @@ export function Input({ label, id, style, ...props }: InputProps) {
           border: '1px solid var(--border-default)',
           borderRadius: 'var(--radius-md)',
           padding: '0.625rem 0.75rem',
-          background: 'var(--color-white)',
+          background: 'var(--surface-default)',
           color: 'var(--text-primary)',
           fontFamily: 'var(--font-sans)',
           ...style,

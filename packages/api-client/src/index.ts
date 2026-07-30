@@ -1,8 +1,13 @@
 import {
   createApiError,
   type ApiErrorBody,
+  type CategoryWithSubcategoriesDto,
   type CategoryDto,
+  type SubcategoryDto,
   type CreateCategoryRequest,
+  type UpdateCategoryRequest,
+  type CreateSubcategoryRequest,
+  type UpdateSubcategoryRequest,
   type HealthStatus,
   type RegisterRequest,
   type RegisterResponse,
@@ -182,14 +187,68 @@ export class ApiClient {
 
   // --- Taxonomy ---
 
-  async listCategories(): Promise<{ data: CategoryDto[] }> {
-    return this.request<{ data: CategoryDto[] }>('/v1/categories');
+  async listCategories(query?: { type?: string; includeInactive?: boolean; search?: string }): Promise<{ data: CategoryWithSubcategoriesDto[] }> {
+    const params = new URLSearchParams();
+    if (query?.type) params.set('type', query.type);
+    if (query?.includeInactive) params.set('includeInactive', 'true');
+    if (query?.search) params.set('search', query.search);
+    const qs = params.toString();
+    return this.request<{ data: CategoryWithSubcategoriesDto[] }>(`/v1/categories${qs ? `?${qs}` : ''}`);
   }
 
   async createCategory(input: CreateCategoryRequest): Promise<CategoryDto> {
     return this.request<CategoryDto>('/v1/categories', {
       method: 'POST',
       body: JSON.stringify(input),
+    });
+  }
+
+  async updateCategory(categoryId: string, input: UpdateCategoryRequest): Promise<CategoryDto> {
+    return this.request<CategoryDto>(`/v1/categories/${categoryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async inactivateCategory(categoryId: string): Promise<CategoryDto> {
+    return this.request<CategoryDto>(`/v1/categories/${categoryId}/inactivate`, {
+      method: 'POST',
+    });
+  }
+
+  async reactivateCategory(categoryId: string): Promise<CategoryDto> {
+    return this.request<CategoryDto>(`/v1/categories/${categoryId}/reactivate`, {
+      method: 'POST',
+    });
+  }
+
+  async listSubcategories(categoryId: string): Promise<{ data: SubcategoryDto[] }> {
+    return this.request<{ data: SubcategoryDto[] }>(`/v1/categories/${categoryId}/subcategories`);
+  }
+
+  async createSubcategory(categoryId: string, input: CreateSubcategoryRequest): Promise<SubcategoryDto> {
+    return this.request<SubcategoryDto>(`/v1/categories/${categoryId}/subcategories`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateSubcategory(subcategoryId: string, input: UpdateSubcategoryRequest): Promise<SubcategoryDto> {
+    return this.request<SubcategoryDto>(`/v1/subcategories/${subcategoryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async inactivateSubcategory(subcategoryId: string): Promise<SubcategoryDto> {
+    return this.request<SubcategoryDto>(`/v1/subcategories/${subcategoryId}/inactivate`, {
+      method: 'POST',
+    });
+  }
+
+  async reactivateSubcategory(subcategoryId: string): Promise<SubcategoryDto> {
+    return this.request<SubcategoryDto>(`/v1/subcategories/${subcategoryId}/reactivate`, {
+      method: 'POST',
     });
   }
 
