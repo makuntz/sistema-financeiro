@@ -22,7 +22,7 @@ export class CreateCategory {
   async execute(input: CreateCategoryInput): Promise<Category> {
     const existing = await this.categories.findByWorkspaceAndName(
       input.workspaceId,
-      input.name.trim(),
+      input.name,
       input.type,
     );
 

@@ -6,6 +6,7 @@ export type CategoryProps = {
   id: string;
   workspaceId: string;
   name: string;
+  normalizedName: string;
   type: CategoryType;
   color: string;
   icon: string;
@@ -17,9 +18,15 @@ export type CategoryProps = {
 
 export class CategoryName {
   readonly value: string;
+  readonly normalized: string;
 
-  private constructor(value: string) {
+  private constructor(value: string, normalized: string) {
     this.value = value;
+    this.normalized = normalized;
+  }
+
+  static normalize(raw: string): string {
+    return raw.trim().toLocaleLowerCase('pt-BR');
   }
 
   static create(raw: string): CategoryName {
@@ -39,11 +46,11 @@ export class CategoryName {
       );
     }
 
-    return new CategoryName(value);
+    return new CategoryName(value, CategoryName.normalize(value));
   }
 
   equals(other: CategoryName): boolean {
-    return this.value.toLocaleLowerCase('pt-BR') === other.value.toLocaleLowerCase('pt-BR');
+    return this.normalized === other.normalized;
   }
 }
 
@@ -67,6 +74,7 @@ export class Category {
       id: input.id,
       workspaceId: input.workspaceId,
       name: name.value,
+      normalizedName: name.normalized,
       type: input.type,
       color: input.color ?? '#64748B',
       icon: input.icon ?? 'tag',
@@ -91,6 +99,10 @@ export class Category {
 
   get name(): string {
     return this.props.name;
+  }
+
+  get normalizedName(): string {
+    return this.props.normalizedName;
   }
 
   get type(): CategoryType {
