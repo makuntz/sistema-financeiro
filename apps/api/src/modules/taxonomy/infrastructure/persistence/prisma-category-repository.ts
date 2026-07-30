@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@pp-planning/database';
 import {
   Category,
+  CategoryName,
   type CategoryRepository,
   type CategoryType,
 } from '@pp-planning/domain';
@@ -27,13 +28,14 @@ export class PrismaCategoryRepository implements CategoryRepository {
     name: string,
     type: CategoryType,
   ): Promise<Category | null> {
-    const row = await this.prisma.category.findFirst({
+    const normalizedName = CategoryName.normalize(name);
+
+    const row = await this.prisma.category.findUnique({
       where: {
-        workspaceId,
-        type,
-        name: {
-          equals: name.trim(),
-          mode: 'insensitive',
+        workspaceId_type_normalizedName: {
+          workspaceId,
+          type,
+          normalizedName,
         },
       },
     });
@@ -50,6 +52,7 @@ export class PrismaCategoryRepository implements CategoryRepository {
         id: props.id,
         workspaceId: props.workspaceId,
         name: props.name,
+        normalizedName: props.normalizedName,
         type: props.type,
         color: props.color,
         icon: props.icon,
@@ -60,6 +63,7 @@ export class PrismaCategoryRepository implements CategoryRepository {
       },
       update: {
         name: props.name,
+        normalizedName: props.normalizedName,
         type: props.type,
         color: props.color,
         icon: props.icon,
@@ -74,6 +78,7 @@ export class PrismaCategoryRepository implements CategoryRepository {
     id: string;
     workspaceId: string;
     name: string;
+    normalizedName: string;
     type: CategoryType;
     color: string;
     icon: string;

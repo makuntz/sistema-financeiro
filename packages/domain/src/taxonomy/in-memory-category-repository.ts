@@ -1,4 +1,4 @@
-import type { Category, CategoryType } from './category.js';
+import { CategoryName, type Category, type CategoryType } from './category.js';
 import type { CategoryRepository } from './category-repository.js';
 
 export class InMemoryCategoryRepository implements CategoryRepository {
@@ -19,14 +19,14 @@ export class InMemoryCategoryRepository implements CategoryRepository {
     name: string,
     type: CategoryType,
   ): Promise<Category | null> {
-    const normalized = name.trim().toLocaleLowerCase('pt-BR');
+    const normalized = CategoryName.normalize(name);
 
     return (
       [...this.items.values()].find(
         (category) =>
           category.workspaceId === workspaceId &&
           category.type === type &&
-          category.name.toLocaleLowerCase('pt-BR') === normalized,
+          category.normalizedName === normalized,
       ) ?? null
     );
   }
