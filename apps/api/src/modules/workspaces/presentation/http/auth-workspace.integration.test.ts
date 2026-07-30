@@ -7,7 +7,15 @@ import type { FastifyInstance } from 'fastify';
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
   process.env.DATABASE_URL ??
-  'postgresql://pp_planning:pp_planning_dev@localhost:5433/pp_planning?schema=public';
+  (process.env.CI
+    ? undefined
+    : 'postgresql://pp_planning:pp_planning_dev@localhost:5433/pp_planning_test?schema=public');
+
+if (!databaseUrl) {
+  throw new Error(
+    'TEST_DATABASE_URL ou DATABASE_URL é obrigatória nos testes de integração (CI usa Postgres na porta 5432).',
+  );
+}
 
 const testEnv = loadEnv({
   NODE_ENV: 'test',
