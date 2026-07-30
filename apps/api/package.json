@@ -20,9 +20,11 @@
     "@pp-planning/database": "workspace:*",
     "@pp-planning/domain": "workspace:*",
     "@pp-planning/logger": "workspace:*",
+    "argon2": "^0.45.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.0",
     "fastify-type-provider-zod": "^4.0.2",
+    "jose": "^6.2.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

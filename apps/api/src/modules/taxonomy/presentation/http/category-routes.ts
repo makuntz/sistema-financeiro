@@ -1,17 +1,18 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import {
   createCategoryRequestSchema,
-  listCategoriesQuerySchema,
   categorySchema,
+  listCategoriesResponseSchema,
 } from '@pp-planning/contracts';
 import { CreateCategory } from '@pp-planning/domain';
-import { z } from 'zod';
-import type { CategoryRepository } from '@pp-planning/domain';
-import { presentCategory } from '../presenters/category-presenter.js';
+import type { CategoryRepository, Permission } from '@pp-planning/domain';
 
 export type TaxonomyHttpDeps = {
   categoryRepository: CategoryRepository;
+  authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requireWorkspace: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  requirePermission: (permission: Permission) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 };
 
 export async function registerTaxonomyRoutes(
@@ -19,25 +20,25 @@ export async function registerTaxonomyRoutes(
   deps: TaxonomyHttpDeps,
 ): Promise<void> {
   const createCategory = new CreateCategory(deps.categoryRepository);
+  const { authenticate, requireWorkspace, requirePermission } = deps;
 
   app.post(
     '/v1/categories',
     {
       schema: {
         tags: ['Taxonomy'],
+        security: [{ BearerAuth: [] }],
         body: createCategoryRequestSchema,
-        response: {
-          201: categorySchema,
-        },
+        response: { 201: categorySchema },
       },
+      preHandler: [authenticate, requireWorkspace, requirePermission('taxonomy.create')],
     },
     async (request, reply) => {
       const body = createCategoryRequestSchema.parse(request.body);
 
-      // Extensão futura: workspaceId deve vir do contexto autenticado, não do body.
       const category = await createCategory.execute({
         id: randomUUID(),
-        workspaceId: body.workspaceId,
+        workspaceId: request.workspace!.workspaceId,
         name: body.name,
         type: body.type,
         color: body.color,
@@ -54,21 +55,32 @@ export async function registerTaxonomyRoutes(
     {
       schema: {
         tags: ['Taxonomy'],
-        querystring: listCategoriesQuerySchema,
-        response: {
-          200: z.object({
-            data: z.array(categorySchema),
-          }),
-        },
+        security: [{ BearerAuth: [] }],
+        response: { 200: listCategoriesResponseSchema },
       },
+      preHandler: [authenticate, requireWorkspace, requirePermission('taxonomy.read')],
     },
     async (request) => {
-      const query = listCategoriesQuerySchema.parse(request.query);
-      const categories = await deps.categoryRepository.findByWorkspace(query.workspaceId);
+      const categories = await deps.categoryRepository.findByWorkspace(
+        request.workspace!.workspaceId,
+      );
 
-      return {
-        data: categories.map(presentCategory),
-      };
+      return { data: categories.map(presentCategory) };
     },
   );
+}
+
+function presentCategory(category: { id: string; workspaceId: string; name: string; type: string; color: string; icon: string; order: number; isActive: boolean; createdAt: Date; updatedAt: Date }) {
+  return {
+    id: category.id,
+    workspaceId: category.workspaceId,
+    name: category.name,
+    type: category.type,
+    color: category.color,
+    icon: category.icon,
+    order: category.order,
+    isActive: category.isActive,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
+  };
 }

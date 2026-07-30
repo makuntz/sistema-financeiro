@@ -29,9 +29,12 @@ model User {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  memberships      WorkspaceMember[]
-  sessions         AuthSession[]
-  createdWorkspaces Workspace[] @relation("WorkspaceCreatedBy")
+  memberships           WorkspaceMember[]
+  sessions              AuthSession[]
+  createdWorkspaces     Workspace[] @relation("WorkspaceCreatedBy")
+  invitationsSent       WorkspaceInvitation[] @relation("InvitationInvitedBy")
+  invitationsAccepted   WorkspaceInvitation[] @relation("InvitationAcceptedBy")
+  auditLogs             AuditLog[]
 
   @@map("users")
 }
@@ -50,6 +53,8 @@ model Workspace {
   createdBy       User     @relation("WorkspaceCreatedBy", fields: [createdByUserId], references: [id])
   members         WorkspaceMember[]
   categories      Category[]
+  invitations     WorkspaceInvitation[]
+  auditLogs       AuditLog[]
 
   @@index([createdByUserId])
   @@map("workspaces")
@@ -90,6 +95,49 @@ model AuthSession {
 
   @@index([userId])
   @@map("auth_sessions")
+}
+
+model WorkspaceInvitation {
+  id               String        @id @db.Uuid
+  workspaceId      String        @map("workspace_id") @db.Uuid
+  invitedEmail     String        @map("invited_email")
+  normalizedEmail  String        @map("normalized_email")
+  role             WorkspaceRole
+  tokenHash        String        @unique @map("token_hash")
+  invitedByUserId  String        @map("invited_by_user_id") @db.Uuid
+  expiresAt        DateTime      @map("expires_at")
+  acceptedAt       DateTime?     @map("accepted_at")
+  acceptedByUserId String?       @map("accepted_by_user_id") @db.Uuid
+  declinedAt       DateTime?     @map("declined_at")
+  revokedAt        DateTime?     @map("revoked_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  workspace        Workspace     @relation(fields: [workspaceId], references: [id])
+  invitedBy        User          @relation("InvitationInvitedBy", fields: [invitedByUserId], references: [id])
+  acceptedBy       User?         @relation("InvitationAcceptedBy", fields: [acceptedByUserId], references: [id])
+
+  @@index([workspaceId])
+  @@index([normalizedEmail])
+  @@index([tokenHash])
+  @@map("workspace_invitations")
+}
+
+model AuditLog {
+  id          String   @id @db.Uuid
+  name        String
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  workspaceId String?  @map("workspace_id") @db.Uuid
+  payload     Json
+  occurredAt  DateTime @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor       User?      @relation(fields: [actorUserId], references: [id])
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId, occurredAt])
+  @@index([actorUserId])
+  @@map("audit_logs")
 }
 
 model Category {

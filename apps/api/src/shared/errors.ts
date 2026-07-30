@@ -23,6 +23,30 @@ export class AppError extends Error {
   }
 }
 
+const DOMAIN_CODE_STATUS: Record<string, number> = {
+  INVALID_CREDENTIALS: 401,
+  INVALID_ACCESS_TOKEN: 401,
+  INVALID_REFRESH_TOKEN: 401,
+  SESSION_REVOKED: 401,
+  REFRESH_TOKEN_EXPIRED: 401,
+  USER_INACTIVE: 403,
+  WORKSPACE_ACCESS_DENIED: 403,
+  WORKSPACE_INACTIVE: 403,
+  INSUFFICIENT_PERMISSION: 403,
+  INVITATION_EMAIL_MISMATCH: 403,
+  EMAIL_ALREADY_IN_USE: 409,
+  CATEGORY_ALREADY_EXISTS: 409,
+  MEMBER_ALREADY_EXISTS: 409,
+  LAST_OWNER_REQUIRED: 409,
+  INVITATION_ALREADY_ACCEPTED: 409,
+  INVITATION_EXPIRED: 410,
+  INVITATION_REVOKED: 410,
+  INVITATION_DECLINED: 410,
+  INVITATION_NOT_FOUND: 404,
+  MEMBER_NOT_FOUND: 404,
+  WORKSPACE_NOT_FOUND: 404,
+};
+
 type FastifyLikeError = Error & {
   statusCode?: number;
   code?: string;
@@ -35,7 +59,7 @@ export function toAppError(error: unknown): AppError {
   }
 
   if (error instanceof DomainError) {
-    const statusCode = error.code === 'CATEGORY_ALREADY_EXISTS' ? 409 : 400;
+    const statusCode = DOMAIN_CODE_STATUS[error.code] ?? 400;
     return AppError.fromDomain(error, statusCode);
   }
 

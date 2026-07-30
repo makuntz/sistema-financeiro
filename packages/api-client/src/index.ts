@@ -4,6 +4,23 @@ import {
   type CategoryDto,
   type CreateCategoryRequest,
   type HealthStatus,
+  type RegisterRequest,
+  type RegisterResponse,
+  type LoginRequest,
+  type LoginResponse,
+  type RefreshRequest,
+  type RefreshResponse,
+  type UserDto,
+  type CreateWorkspaceRequest,
+  type WorkspaceSummaryDto,
+  type WorkspaceDto,
+  type UpdateWorkspaceRequest,
+  type MemberDto,
+  type ChangeMemberRoleRequest,
+  type CreateInvitationRequest,
+  type CreateInvitationResponse,
+  type InvitationDto,
+  type InvitationPreviewDto,
 } from '@pp-planning/contracts';
 
 export class ApiClientError extends Error {
@@ -22,33 +39,151 @@ export class ApiClientError extends Error {
   }
 }
 
+export type TokenProvider = () => string | null | Promise<string | null>;
+export type WorkspaceProvider = () => string | null | Promise<string | null>;
+
 export type ApiClientOptions = {
   baseUrl: string;
-  getAccessToken?: () => string | null | Promise<string | null>;
+  getAccessToken?: TokenProvider;
+  getWorkspaceId?: WorkspaceProvider;
   fetchImpl?: typeof fetch;
 };
 
 export class ApiClient {
   private readonly baseUrl: string;
-  private readonly getAccessToken?: ApiClientOptions['getAccessToken'];
+  private readonly getAccessToken?: TokenProvider;
+  private readonly getWorkspaceId?: WorkspaceProvider;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: ApiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.getAccessToken = options.getAccessToken;
+    this.getWorkspaceId = options.getWorkspaceId;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
+
+  // --- System ---
 
   async health(): Promise<HealthStatus> {
     return this.request<HealthStatus>('/health');
   }
 
-  async listCategories(workspaceId: string): Promise<CategoryDto[]> {
-    const query = new URLSearchParams({ workspaceId });
-    const response = await this.request<{ data: CategoryDto[] }>(
-      `/v1/categories?${query.toString()}`,
-    );
-    return response.data;
+  // --- Auth ---
+
+  async register(input: RegisterRequest): Promise<RegisterResponse> {
+    return this.request<RegisterResponse>('/v1/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async login(input: LoginRequest): Promise<LoginResponse> {
+    return this.request<LoginResponse>('/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async refresh(input: RefreshRequest): Promise<RefreshResponse> {
+    return this.request<RefreshResponse>('/v1/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async logout(input: { refreshToken: string }): Promise<void> {
+    await this.request<void>('/v1/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async me(): Promise<UserDto> {
+    return this.request<UserDto>('/v1/auth/me');
+  }
+
+  // --- Workspaces ---
+
+  async listWorkspaces(): Promise<{ data: WorkspaceSummaryDto[] }> {
+    return this.request<{ data: WorkspaceSummaryDto[] }>('/v1/workspaces');
+  }
+
+  async createWorkspace(input: CreateWorkspaceRequest): Promise<WorkspaceSummaryDto> {
+    return this.request<WorkspaceSummaryDto>('/v1/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async getCurrentWorkspace(): Promise<WorkspaceDto> {
+    return this.request<WorkspaceDto>('/v1/workspaces/current');
+  }
+
+  async updateCurrentWorkspace(input: UpdateWorkspaceRequest): Promise<WorkspaceDto> {
+    return this.request<WorkspaceDto>('/v1/workspaces/current', {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  // --- Members ---
+
+  async listMembers(): Promise<{ data: MemberDto[] }> {
+    return this.request<{ data: MemberDto[] }>('/v1/workspaces/current/members');
+  }
+
+  async changeMemberRole(memberId: string, input: ChangeMemberRoleRequest): Promise<void> {
+    await this.request<void>(`/v1/workspaces/current/members/${memberId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deactivateMember(memberId: string): Promise<void> {
+    await this.request<void>(`/v1/workspaces/current/members/${memberId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async leaveWorkspace(): Promise<void> {
+    await this.request<void>('/v1/workspaces/current/leave', { method: 'POST' });
+  }
+
+  // --- Invitations ---
+
+  async createInvitation(input: CreateInvitationRequest): Promise<CreateInvitationResponse> {
+    return this.request<CreateInvitationResponse>('/v1/workspaces/current/invitations', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async listInvitations(): Promise<{ data: InvitationDto[] }> {
+    return this.request<{ data: InvitationDto[] }>('/v1/workspaces/current/invitations');
+  }
+
+  async revokeInvitation(invitationId: string): Promise<void> {
+    await this.request<void>(`/v1/workspaces/current/invitations/${invitationId}/revoke`, {
+      method: 'POST',
+    });
+  }
+
+  async getInvitationPreview(token: string): Promise<InvitationPreviewDto> {
+    return this.request<InvitationPreviewDto>(`/v1/invitations/${token}`);
+  }
+
+  async acceptInvitation(token: string): Promise<void> {
+    await this.request<void>(`/v1/invitations/${token}/accept`, { method: 'POST' });
+  }
+
+  async declineInvitation(token: string): Promise<void> {
+    await this.request<void>(`/v1/invitations/${token}/decline`, { method: 'POST' });
+  }
+
+  // --- Taxonomy ---
+
+  async listCategories(): Promise<{ data: CategoryDto[] }> {
+    return this.request<{ data: CategoryDto[] }>('/v1/categories');
   }
 
   async createCategory(input: CreateCategoryRequest): Promise<CategoryDto> {
@@ -57,6 +192,8 @@ export class ApiClient {
       body: JSON.stringify(input),
     });
   }
+
+  // --- Internal ---
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers = new Headers(init.headers);
@@ -69,6 +206,11 @@ export class ApiClient {
     const token = this.getAccessToken ? await this.getAccessToken() : null;
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const workspaceId = this.getWorkspaceId ? await this.getWorkspaceId() : null;
+    if (workspaceId) {
+      headers.set('X-Workspace-Id', workspaceId);
     }
 
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
