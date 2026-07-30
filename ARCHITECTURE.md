@@ -52,9 +52,60 @@ Vantagens: precisão, comparações exatas, alinhamento com sistemas financeiros
 
 Limitações: conversão na apresentação; cuidado com serialização JSON (`bigint` → string/number controlado).
 
+## Usuário individual vs workspace compartilhado
+
+Cada **usuário** (`User`) tem login próprio (e-mail + senha). Não existe “conta conjunta” — o compartilhamento acontece via **workspace**.
+
+- **Cadastro** (`RegisterUser`): cria usuário, um workspace pessoal (`Planejamento de <Nome>`) e membership `owner`.
+- **Workspace compartilhado**: qualquer owner pode criar outro workspace (`POST /v1/workspaces`) ou convidar membros para um workspace existente.
+- **Dados financeiros** pertencem ao workspace, não ao usuário isoladamente. Dois cônjuges com logins distintos veem os mesmos dados quando compartilham membership no mesmo workspace.
+
 ## Estratégia multi-workspace
 
-Todo registro financeiro carrega `workspaceId`. Acesso sempre filtrado pelo vínculo do usuário autenticado. O frontend não deve ser a fonte da verdade do workspace autorizado.
+Todo registro financeiro carrega `workspaceId`. Um usuário pode ter **vários memberships** ativos (workspace pessoal + familiar + outros). A API lista vínculos em `GET /v1/workspaces`; o cliente escolhe qual contexto usar por requisição.
+
+Resolução do workspace na API (etapa 2.1):
+
+1. Autenticar JWT (`Authorization: Bearer`).
+2. Ler `X-Workspace-Id` do header (obrigatório em rotas `/current/*` e domínio).
+3. Verificar membership ativo (`WorkspaceMember`) do usuário naquele workspace.
+4. Carregar papel e permissões derivadas do role.
+
+O frontend informa qual workspace deseja usar, mas **não é fonte da verdade** — a API valida o vínculo a cada requisição.
+
+## Convites — ciclo de vida
+
+Status derivado de timestamps (não há coluna `status` persistida):
+
+| Status | Condição |
+|--------|----------|
+| `pending` | Sem `acceptedAt`, `declinedAt`, `revokedAt` e `expiresAt` no futuro |
+| `accepted` | `acceptedAt` preenchido |
+| `declined` | `declinedAt` preenchido |
+| `revoked` | `revokedAt` preenchido |
+| `expired` | TTL de 7 dias ultrapassado e ainda pendente |
+
+Fluxo: owner/admin cria convite → token opaco na URL → convidado faz login/cadastro com o e-mail convidado → aceita ou recusa. Novo convite para o mesmo e-mail revoga o pendente anterior. Aceitar exige que o e-mail da conta autenticada coincida com o do convite.
+
+**E-mail**: envio transacional ainda **não implementado**. A API devolve `invitationLink` na criação; integração futura com provedor (ex.: SES, Resend) usará o mesmo link.
+
+## Múltiplos owners
+
+Um workspace pode ter **vários owners** simultâneos (convite ou promoção via `PATCH .../role`). Regra invariante: **sempre pelo menos um owner ativo**. O último owner não pode sair, ser rebaixado ou removido (`LAST_OWNER_REQUIRED`).
+
+Admins gerenciam membros, mas não alteram papéis envolvendo `owner`.
+
+## Propriedade vs autoria dos dados
+
+Três eixos distintos:
+
+| Campo | Significado |
+|-------|-------------|
+| `workspaceId` | **Proprietário lógico** — a quem pertence o dado financeiro; isolamento e autorização |
+| `createdByUserId` | **Autor** — quem criou o registro (workspace, convite, etc.); auditoria |
+| `paidByMemberId` *(futuro)* | **Quem pagou** — atribuição pessoal dentro do workspace compartilhado (ex.: “Leandro pagou este gasto”) |
+
+Exemplo: uma `Transaction` tem `workspaceId` (visível a todos os membros com permissão), pode registrar `createdByUserId` (quem lançou) e, no futuro, `paidByMemberId` (quem efetivamente pagou), sem transferir ownership do dado para o usuário.
 
 ## Planning vs Ledger
 

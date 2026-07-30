@@ -15,19 +15,19 @@ export const categorySchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const createCategoryRequestSchema = z.object({
-  workspaceId: z.string().uuid(),
-  name: z.string().min(2).max(80),
-  type: categoryTypeSchema,
-  color: z.string().min(1).max(32).optional(),
-  icon: z.string().min(1).max(64).optional(),
-  order: z.number().int().optional(),
-});
+export const createCategoryRequestSchema = z
+  .object({
+    name: z.string().min(2).max(80),
+    type: categoryTypeSchema,
+    color: z.string().min(1).max(32).optional(),
+    icon: z.string().min(1).max(64).optional(),
+    order: z.number().int().optional(),
+  })
+  .strict();
 
-export const listCategoriesQuerySchema = z.object({
-  workspaceId: z.string().uuid(),
+export const listCategoriesResponseSchema = z.object({
+  data: z.array(categorySchema),
 });
 
 export type CategoryDto = z.infer<typeof categorySchema>;
 export type CreateCategoryRequest = z.infer<typeof createCategoryRequestSchema>;
-export type ListCategoriesQuery = z.infer<typeof listCategoriesQuerySchema>;
