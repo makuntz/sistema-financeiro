@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/cadastro', '/convites'];
-const PUBLIC_PREFIXES = ['/api/bff/auth/login', '/api/bff/auth/register', '/api/bff/invitations/preview'];
+const PUBLIC_PREFIXES = [
+  '/api/bff/auth/login',
+  '/api/bff/auth/register',
+  '/api/bff/invitations/preview',
+];
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return true;
@@ -32,7 +36,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };

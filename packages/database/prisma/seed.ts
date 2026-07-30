@@ -107,6 +107,27 @@ async function main(): Promise<void> {
       icon: 'home',
       subcategories: ['Aluguel', 'Condomínio', 'Energia', 'Água', 'Internet'],
     },
+    {
+      name: 'Salários',
+      type: 'income' as const,
+      color: '#059669',
+      icon: 'wallet',
+      subcategories: ['Salário principal', 'Segunda renda'],
+    },
+    {
+      name: 'Benefícios',
+      type: 'income' as const,
+      color: '#0891B2',
+      icon: 'briefcase',
+      subcategories: ['Vale-alimentação', 'Reembolsos'],
+    },
+    {
+      name: 'Outras receitas',
+      type: 'income' as const,
+      color: '#7C3AED',
+      icon: 'tag',
+      subcategories: ['Rendimentos', 'Receitas extras'],
+    },
   ];
 
   for (const cat of seedCategories) {
@@ -163,6 +184,73 @@ async function main(): Promise<void> {
         });
       }
     }
+  }
+
+  // --- Demo monthly plans ---
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+  const allSubs = await prisma.subcategory.findMany({
+    where: { workspaceId: workspace.id },
+    include: { category: true },
+  });
+
+  const planAmounts: Record<string, bigint> = {};
+  for (const sub of allSubs) {
+    if (sub.category.type === 'income') {
+      planAmounts[sub.id] = sub.name.includes('principal') ? 800000n : 150000n;
+    } else {
+      planAmounts[sub.id] = 50000n + BigInt(Math.floor(Math.random() * 100)) * 100n;
+    }
+  }
+
+  for (const period of [
+    { year: prevYear, month: prevMonth },
+    { year: currentYear, month: currentMonth },
+  ]) {
+    const existingPlan = await prisma.monthlyPlan.findUnique({
+      where: {
+        workspaceId_year_month: {
+          workspaceId: workspace.id,
+          year: period.year,
+          month: period.month,
+        },
+      },
+    });
+
+    if (existingPlan) {
+      console.log(`Plano ${period.year}/${period.month} já existe, pulando.`);
+      continue;
+    }
+
+    const planId = randomUUID();
+    await prisma.monthlyPlan.create({
+      data: {
+        id: planId,
+        workspaceId: workspace.id,
+        year: period.year,
+        month: period.month,
+        version: 1,
+        createdByUserId: owner.id,
+        updatedByUserId: owner.id,
+      },
+    });
+
+    const itemsData = allSubs.map((sub) => ({
+      id: randomUUID(),
+      workspaceId: workspace.id,
+      monthlyPlanId: planId,
+      subcategoryId: sub.id,
+      plannedAmountInCents: planAmounts[sub.id] ?? 10000n,
+    }));
+
+    await prisma.monthlyPlanItem.createMany({ data: itemsData });
+
+    console.log(`Plano demo criado: ${period.year}/${period.month} (${itemsData.length} itens)`);
   }
 
   console.log('Seed de desenvolvimento aplicado.');

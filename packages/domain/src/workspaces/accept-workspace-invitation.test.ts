@@ -107,8 +107,7 @@ describe('AcceptWorkspaceInvitation', () => {
     const rawToken = input.token ?? tokens.generateOpaqueToken();
     const tokenHash = tokens.hashRefreshToken(rawToken);
     const now = new Date();
-    const expiresAt =
-      input.expiresAt ?? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = input.expiresAt ?? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     let invitation = WorkspaceInvitation.create({
       id: input.id ?? randomUUID(),

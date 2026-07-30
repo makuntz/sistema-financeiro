@@ -12,9 +12,7 @@ const databaseUrl =
     : 'postgresql://pp_planning:pp_planning_dev@localhost:5433/pp_planning_test?schema=public');
 
 if (!databaseUrl) {
-  throw new Error(
-    'TEST_DATABASE_URL ou DATABASE_URL é obrigatória nos testes de integração.',
-  );
+  throw new Error('TEST_DATABASE_URL ou DATABASE_URL é obrigatória nos testes de integração.');
 }
 
 const testEnv = loadEnv({
@@ -70,6 +68,8 @@ describe('Taxonomy Stage 3 - Categories & Subcategories', () => {
   });
 
   beforeEach(async () => {
+    await prisma.monthlyPlanItem.deleteMany();
+    await prisma.monthlyPlan.deleteMany();
     await prisma.subcategory.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.category.deleteMany();

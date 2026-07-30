@@ -7,6 +7,7 @@ describe('getPermissions', () => {
     expect(p.canManageMembers).toBe(true);
     expect(p.canInvite).toBe(true);
     expect(p.canWriteTaxonomy).toBe(true);
+    expect(p.canWritePlanning).toBe(true);
     expect(p.canPromoteOwner).toBe(true);
     expect(p.canRemoveMembers).toBe(true);
     expect(p.canChangeRoles).toBe(true);
@@ -17,16 +18,18 @@ describe('getPermissions', () => {
     expect(p.canManageMembers).toBe(true);
     expect(p.canInvite).toBe(true);
     expect(p.canWriteTaxonomy).toBe(true);
+    expect(p.canWritePlanning).toBe(true);
     expect(p.canPromoteOwner).toBe(false);
     expect(p.canRemoveMembers).toBe(true);
     expect(p.canChangeRoles).toBe(true);
   });
 
-  it('member can only write taxonomy', () => {
+  it('member can only write taxonomy and planning', () => {
     const p = getPermissions('member');
     expect(p.canManageMembers).toBe(false);
     expect(p.canInvite).toBe(false);
     expect(p.canWriteTaxonomy).toBe(true);
+    expect(p.canWritePlanning).toBe(true);
     expect(p.canPromoteOwner).toBe(false);
   });
 
@@ -35,6 +38,7 @@ describe('getPermissions', () => {
     expect(p.canManageMembers).toBe(false);
     expect(p.canInvite).toBe(false);
     expect(p.canWriteTaxonomy).toBe(false);
+    expect(p.canWritePlanning).toBe(false);
     expect(p.canPromoteOwner).toBe(false);
   });
 });

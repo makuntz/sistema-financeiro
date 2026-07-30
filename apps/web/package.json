@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@pp-planning/api-client": "workspace:*",
+    "@pp-planning/contracts": "workspace:*",
     "@pp-planning/design-tokens": "workspace:*",
     "@pp-planning/ui-web": "workspace:*",
     "clsx": "^2.1.1",

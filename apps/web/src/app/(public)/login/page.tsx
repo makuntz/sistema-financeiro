@@ -67,7 +67,9 @@ export default function LoginPage() {
       </button>
 
       <Card style={{ width: 'min(100%, 26rem)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}
+        >
           <div
             aria-hidden
             style={{
@@ -85,7 +87,13 @@ export default function LoginPage() {
           </div>
           <div>
             <div style={{ fontWeight: 700 }}>PP Planning</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', letterSpacing: '0.06em' }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                letterSpacing: '0.06em',
+              }}
+            >
               SUA VIDA. SEU PLANO.
             </div>
           </div>
@@ -130,7 +138,10 @@ export default function LoginPage() {
 
         <p style={{ marginTop: '1.35rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
           Não tem conta?{' '}
-          <a href="/cadastro" style={{ color: 'var(--action-primary)', textDecoration: 'none', fontWeight: 600 }}>
+          <a
+            href="/cadastro"
+            style={{ color: 'var(--action-primary)', textDecoration: 'none', fontWeight: 600 }}
+          >
             Criar conta
           </a>
         </p>

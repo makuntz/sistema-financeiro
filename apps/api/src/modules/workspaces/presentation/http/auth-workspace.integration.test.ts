@@ -71,6 +71,9 @@ describe('Auth, workspaces, invitations e taxonomy protegida', () => {
   });
 
   beforeEach(async () => {
+    await prisma.monthlyPlanItem.deleteMany();
+    await prisma.monthlyPlan.deleteMany();
+    await prisma.subcategory.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.category.deleteMany();
     await prisma.workspaceInvitation.deleteMany();
@@ -205,9 +208,11 @@ describe('Auth, workspaces, invitations e taxonomy protegida', () => {
     });
     expect(workspaces.statusCode).toBe(200);
     expect(
-      workspaces.json().data.some(
-        (item: { workspace: { id: string } }) => item.workspace.id === owner.workspace.id,
-      ),
+      workspaces
+        .json()
+        .data.some(
+          (item: { workspace: { id: string } }) => item.workspace.id === owner.workspace.id,
+        ),
     ).toBe(true);
 
     const createCategory = await app.inject({
@@ -301,9 +306,7 @@ describe('Auth, workspaces, invitations e taxonomy protegida', () => {
         'x-workspace-id': a.workspace.id,
       },
     });
-    const memberB = members
-      .json()
-      .data.find((m: { email: string }) => m.email === 'b@example.com');
+    const memberB = members.json().data.find((m: { email: string }) => m.email === 'b@example.com');
 
     const promote = await app.inject({
       method: 'PATCH',

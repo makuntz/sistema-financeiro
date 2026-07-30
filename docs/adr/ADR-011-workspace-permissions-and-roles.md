@@ -12,12 +12,12 @@ Workspaces compartilhados exigem autorização granular: leitura para convidados
 
 Quatro papéis fixos (`WorkspaceRole`):
 
-| Papel | Escopo resumido |
-|-------|-----------------|
-| `owner` | Tudo, inclusive convites com qualquer papel e promoção a owner |
-| `admin` | Quase tudo; **não** altera/remove owners; convida só `member`/`viewer` |
-| `member` | Leitura + escrita financeira/taxonomy; sem gestão de membros/convites |
-| `viewer` | Somente leitura |
+| Papel    | Escopo resumido                                                        |
+| -------- | ---------------------------------------------------------------------- |
+| `owner`  | Tudo, inclusive convites com qualquer papel e promoção a owner         |
+| `admin`  | Quase tudo; **não** altera/remove owners; convida só `member`/`viewer` |
+| `member` | Leitura + escrita financeira/taxonomy; sem gestão de membros/convites  |
+| `viewer` | Somente leitura                                                        |
 
 Permissões explícitas (`Permission`) mapeadas em `permissionsForRole()` — ex.: `members.manage`, `invitations.create`, `financial.write`. Middleware `requirePermission('...')` consulta a lista derivada do role do membership.
 

@@ -35,13 +35,13 @@ sequenceDiagram
 
 ## Endpoints
 
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| POST | `/v1/auth/register` | — | Cadastro + workspace pessoal + tokens |
-| POST | `/v1/auth/login` | — | Login + tokens |
-| POST | `/v1/auth/refresh` | — | Rotaciona refresh e emite novos tokens |
-| POST | `/v1/auth/logout` | — | Revoga sessão do refresh informado |
-| GET | `/v1/auth/me` | Bearer | Dados do usuário autenticado |
+| Método | Rota                | Auth   | Descrição                              |
+| ------ | ------------------- | ------ | -------------------------------------- |
+| POST   | `/v1/auth/register` | —      | Cadastro + workspace pessoal + tokens  |
+| POST   | `/v1/auth/login`    | —      | Login + tokens                         |
+| POST   | `/v1/auth/refresh`  | —      | Rotaciona refresh e emite novos tokens |
+| POST   | `/v1/auth/logout`   | —      | Revoga sessão do refresh informado     |
+| GET    | `/v1/auth/me`       | Bearer | Dados do usuário autenticado           |
 
 ## Detalhes
 

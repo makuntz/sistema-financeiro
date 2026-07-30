@@ -35,6 +35,8 @@ model User {
   invitationsSent       WorkspaceInvitation[] @relation("InvitationInvitedBy")
   invitationsAccepted   WorkspaceInvitation[] @relation("InvitationAcceptedBy")
   auditLogs             AuditLog[]
+  createdPlans          MonthlyPlan[] @relation("PlanCreatedBy")
+  updatedPlans          MonthlyPlan[] @relation("PlanUpdatedBy")
 
   @@map("users")
 }
@@ -56,6 +58,8 @@ model Workspace {
   subcategories   Subcategory[]
   invitations     WorkspaceInvitation[]
   auditLogs       AuditLog[]
+  monthlyPlans    MonthlyPlan[]
+  monthlyPlanItems MonthlyPlanItem[]
 
   @@index([createdByUserId])
   @@map("workspaces")
@@ -175,11 +179,53 @@ model Subcategory {
 
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   category       Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  planItems      MonthlyPlanItem[] @relation("PlanItemSubcategory")
 
+  @@unique([id, workspaceId])
   @@unique([workspaceId, categoryId, normalizedName])
   @@index([workspaceId])
   @@index([categoryId])
   @@index([workspaceId, isActive])
   @@index([categoryId, isActive])
   @@map("subcategories")
+}
+
+model MonthlyPlan {
+  id              String   @id @db.Uuid
+  workspaceId     String   @map("workspace_id") @db.Uuid
+  year            Int
+  month           Int
+  version         Int      @default(1)
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  updatedByUserId String   @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  createdBy       User      @relation("PlanCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy       User      @relation("PlanUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  items           MonthlyPlanItem[]
+
+  @@unique([workspaceId, year, month])
+  @@unique([id, workspaceId])
+  @@index([workspaceId])
+  @@map("monthly_plans")
+}
+
+model MonthlyPlanItem {
+  id                   String   @id @db.Uuid
+  workspaceId          String   @map("workspace_id") @db.Uuid
+  monthlyPlanId        String   @map("monthly_plan_id") @db.Uuid
+  subcategoryId        String   @map("subcategory_id") @db.Uuid
+  plannedAmountInCents BigInt   @map("planned_amount_in_cents")
+
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  monthlyPlan   MonthlyPlan  @relation(fields: [monthlyPlanId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  subcategory   Subcategory  @relation("PlanItemSubcategory", fields: [subcategoryId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+
+  @@unique([monthlyPlanId, subcategoryId])
+  @@index([workspaceId])
+  @@index([monthlyPlanId])
+  @@index([subcategoryId])
+  @@map("monthly_plan_items")
 }

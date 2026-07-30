@@ -64,13 +64,13 @@ sequenceDiagram
 
 ## Validações principais
 
-| Etapa | Regra |
-|-------|--------|
-| Criar | E-mail não pode já ser membro ativo |
-| Criar | Admin não convida owner/admin |
+| Etapa   | Regra                                   |
+| ------- | --------------------------------------- |
+| Criar   | E-mail não pode já ser membro ativo     |
+| Criar   | Admin não convida owner/admin           |
 | Aceitar | Conta autenticada com e-mail do convite |
-| Aceitar | Convite pending e não expirado |
-| Preview | Token válido (hash encontrado) |
+| Aceitar | Convite pending e não expirado          |
+| Preview | Token válido (hash encontrado)          |
 
 ## E-mail (estratégia futura)
 

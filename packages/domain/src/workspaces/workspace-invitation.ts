@@ -2,12 +2,7 @@ import { DomainError } from '../shared/domain-error.js';
 import { Email } from '../identity/email.js';
 import type { WorkspaceRole } from './permissions.js';
 
-export type InvitationStatus =
-  | 'pending'
-  | 'accepted'
-  | 'declined'
-  | 'revoked'
-  | 'expired';
+export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
 
 export type WorkspaceInvitationProps = {
   id: string;
@@ -144,10 +139,7 @@ export class WorkspaceInvitation {
     const status = this.status(now);
 
     if (status === 'accepted') {
-      throw new DomainError(
-        'INVITATION_ALREADY_ACCEPTED',
-        'Este convite já foi aceito.',
-      );
+      throw new DomainError('INVITATION_ALREADY_ACCEPTED', 'Este convite já foi aceito.');
     }
 
     if (status === 'declined') {

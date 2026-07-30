@@ -17,11 +17,9 @@ export class ReactivateSubcategory {
     );
 
     if (!subcategory) {
-      throw new DomainError(
-        'SUBCATEGORY_NOT_FOUND',
-        'Subcategoria não encontrada.',
-        { subcategoryId: input.subcategoryId },
-      );
+      throw new DomainError('SUBCATEGORY_NOT_FOUND', 'Subcategoria não encontrada.', {
+        subcategoryId: input.subcategoryId,
+      });
     }
 
     subcategory.activate();

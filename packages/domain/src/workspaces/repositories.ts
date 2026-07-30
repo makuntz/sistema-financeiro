@@ -23,10 +23,7 @@ export interface WorkspaceMemberRepository {
     workspaceId: string,
     userId: string,
   ): Promise<WorkspaceMember | null>;
-  findByWorkspaceAndUser(
-    workspaceId: string,
-    userId: string,
-  ): Promise<WorkspaceMember | null>;
+  findByWorkspaceAndUser(workspaceId: string, userId: string): Promise<WorkspaceMember | null>;
   listActiveByUser(userId: string): Promise<WorkspaceMember[]>;
   listActiveByWorkspace(workspaceId: string): Promise<MemberWithUser[]>;
   countActiveOwners(workspaceId: string): Promise<number>;

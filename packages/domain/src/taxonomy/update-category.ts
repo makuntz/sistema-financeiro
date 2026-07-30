@@ -21,11 +21,9 @@ export class UpdateCategory {
     );
 
     if (!category) {
-      throw new DomainError(
-        'CATEGORY_NOT_FOUND',
-        'Categoria não encontrada.',
-        { categoryId: input.categoryId },
-      );
+      throw new DomainError('CATEGORY_NOT_FOUND', 'Categoria não encontrada.', {
+        categoryId: input.categoryId,
+      });
     }
 
     if (input.name !== undefined) {
@@ -36,11 +34,10 @@ export class UpdateCategory {
       );
 
       if (existing && existing.id !== category.id) {
-        throw new DomainError(
-          'CATEGORY_ALREADY_EXISTS',
-          'Já existe uma categoria com este nome.',
-          { workspaceId: input.workspaceId, name: input.name },
-        );
+        throw new DomainError('CATEGORY_ALREADY_EXISTS', 'Já existe uma categoria com este nome.', {
+          workspaceId: input.workspaceId,
+          name: input.name,
+        });
       }
     }
 

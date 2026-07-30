@@ -28,9 +28,7 @@ describe('InvitePage - expired state', () => {
     render(<InvitePage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Este convite expirou/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Este convite expirou/)).toBeInTheDocument();
     });
   });
 

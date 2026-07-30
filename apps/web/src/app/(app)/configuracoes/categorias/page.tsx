@@ -20,8 +20,28 @@ type Category = {
   subcategories?: Subcategory[];
 };
 
-const ICON_OPTIONS = ['tag', 'shopping-cart', 'heart', 'car', 'home', 'utensils', 'pill', 'dumbbell', 'briefcase', 'wallet'];
-const COLOR_OPTIONS = ['#2563EB', '#059669', '#E11D48', '#7C3AED', '#EA580C', '#0F766E', '#0284C7', '#64748B'];
+const ICON_OPTIONS = [
+  'tag',
+  'shopping-cart',
+  'heart',
+  'car',
+  'home',
+  'utensils',
+  'pill',
+  'dumbbell',
+  'briefcase',
+  'wallet',
+];
+const COLOR_OPTIONS = [
+  '#2563EB',
+  '#059669',
+  '#E11D48',
+  '#7C3AED',
+  '#EA580C',
+  '#0F766E',
+  '#0284C7',
+  '#64748B',
+];
 
 export default function CategoriasPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -145,7 +165,11 @@ export default function CategoriasPage() {
         </div>
       </div>
 
-      {error && <Alert variant="danger" style={{ marginBottom: '1rem' }}>{error}</Alert>}
+      {error && (
+        <Alert variant="danger" style={{ marginBottom: '1rem' }}>
+          {error}
+        </Alert>
+      )}
 
       {categories.length === 0 ? (
         <Card>
@@ -163,7 +187,12 @@ export default function CategoriasPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <button
                   onClick={() => toggleExpand(cat.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                  }}
                 >
                   {expanded.has(cat.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </button>
@@ -178,14 +207,21 @@ export default function CategoriasPage() {
                   }}
                 />
                 <span style={{ flex: 1, fontWeight: 600 }}>{cat.name}</span>
-                <Badge variant={String(cat.type).toLowerCase() === 'income' ? 'success' : 'default'}>
+                <Badge
+                  variant={String(cat.type).toLowerCase() === 'income' ? 'success' : 'default'}
+                >
                   {String(cat.type).toLowerCase() === 'income' ? 'Receita' : 'Despesa'}
                 </Badge>
                 {!cat.isActive && <Badge variant="warning">Arquivada</Badge>}
                 <button
                   onClick={() => handleToggleActive(cat.id, cat.isActive)}
                   title={cat.isActive ? 'Arquivar' : 'Reativar'}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                  }}
                 >
                   {cat.isActive ? <Archive size={16} /> : <RotateCcw size={16} />}
                 </button>
@@ -218,7 +254,10 @@ export default function CategoriasPage() {
                     </p>
                   )}
                   <button
-                    onClick={() => { setSubModal(cat.id); setSubName(''); }}
+                    onClick={() => {
+                      setSubModal(cat.id);
+                      setSubName('');
+                    }}
                     style={{
                       marginTop: '0.5rem',
                       background: 'none',
@@ -242,7 +281,11 @@ export default function CategoriasPage() {
 
       {/* New Category Dialog */}
       <Dialog open={showModal} onClose={() => setShowModal(false)} title="Nova categoria">
-        {formError && <Alert variant="danger" style={{ marginBottom: '1rem' }}>{formError}</Alert>}
+        {formError && (
+          <Alert variant="danger" style={{ marginBottom: '1rem' }}>
+            {formError}
+          </Alert>
+        )}
         <div style={{ display: 'grid', gap: '1rem' }}>
           <Input label="Nome" value={newName} onChange={(e) => setNewName(e.target.value)} />
           <label style={{ display: 'grid', gap: '0.35rem', fontFamily: 'var(--font-sans)' }}>
@@ -264,7 +307,16 @@ export default function CategoriasPage() {
             </select>
           </label>
           <div>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>Cor</span>
+            <span
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                display: 'block',
+                marginBottom: '0.35rem',
+              }}
+            >
+              Cor
+            </span>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {COLOR_OPTIONS.map((c) => (
                 <button
@@ -275,7 +327,8 @@ export default function CategoriasPage() {
                     height: '1.5rem',
                     borderRadius: '50%',
                     background: c,
-                    border: newColor === c ? '2px solid var(--text-primary)' : '2px solid transparent',
+                    border:
+                      newColor === c ? '2px solid var(--text-primary)' : '2px solid transparent',
                     cursor: 'pointer',
                   }}
                 />
@@ -283,7 +336,16 @@ export default function CategoriasPage() {
             </div>
           </div>
           <div>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>Ícone</span>
+            <span
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                display: 'block',
+                marginBottom: '0.35rem',
+              }}
+            >
+              Ícone
+            </span>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {ICON_OPTIONS.map((ic) => (
                 <button
@@ -292,7 +354,8 @@ export default function CategoriasPage() {
                   style={{
                     fontSize: '1.25rem',
                     padding: '0.25rem',
-                    border: newIcon === ic ? '2px solid var(--action-primary)' : '2px solid transparent',
+                    border:
+                      newIcon === ic ? '2px solid var(--action-primary)' : '2px solid transparent',
                     borderRadius: 'var(--radius-sm)',
                     background: 'none',
                     cursor: 'pointer',
@@ -303,8 +366,17 @@ export default function CategoriasPage() {
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'flex-end',
+              marginTop: '0.5rem',
+            }}
+          >
+            <Button variant="secondary" onClick={() => setShowModal(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleCreate} disabled={saving}>
               {saving ? 'Salvando...' : 'Criar'}
             </Button>
@@ -315,9 +387,15 @@ export default function CategoriasPage() {
       {/* Add Subcategory Dialog */}
       <Dialog open={!!subModal} onClose={() => setSubModal(null)} title="Nova subcategoria">
         <div style={{ display: 'grid', gap: '1rem' }}>
-          <Input label="Nome da subcategoria" value={subName} onChange={(e) => setSubName(e.target.value)} />
+          <Input
+            label="Nome da subcategoria"
+            value={subName}
+            onChange={(e) => setSubName(e.target.value)}
+          />
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={() => setSubModal(null)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => setSubModal(null)}>
+              Cancelar
+            </Button>
             <Button onClick={() => subModal && handleAddSubcategory(subModal)}>Criar</Button>
           </div>
         </div>

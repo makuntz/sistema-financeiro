@@ -95,7 +95,13 @@ describe('RegisterUser / identity basics', () => {
   beforeEach(() => {
     users = new MemoryUsers();
     store = new MemoryRegistrationStore();
-    useCase = new RegisterUser(users, store, new FakeHasher(), new FakeTokens(), new InMemoryAuditLogger());
+    useCase = new RegisterUser(
+      users,
+      store,
+      new FakeHasher(),
+      new FakeTokens(),
+      new InMemoryAuditLogger(),
+    );
   });
 
   it('cadastra usuário e workspace owner', async () => {

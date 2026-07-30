@@ -113,10 +113,7 @@ export class LeaveWorkspace {
   ) {}
 
   async execute(input: { workspaceId: string; userId: string }) {
-    const member = await this.members.findActiveByWorkspaceAndUser(
-      input.workspaceId,
-      input.userId,
-    );
+    const member = await this.members.findActiveByWorkspaceAndUser(input.workspaceId, input.userId);
 
     if (!member) {
       throw new DomainError('MEMBER_NOT_FOUND', 'Membro não encontrado.');

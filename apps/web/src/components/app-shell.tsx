@@ -25,6 +25,7 @@ import {
   Tags,
 } from 'lucide-react';
 import { useTheme } from './theme-provider';
+import { useUnsavedChanges } from './unsaved-changes';
 
 type User = { id: string; name: string; email: string };
 type Workspace = { id: string; name: string; role: string };
@@ -41,7 +42,7 @@ type NavItem =
 
 const NAV_ITEMS: NavItem[] = [
   { type: 'link', href: '/inicio', label: 'Resumo', icon: LayoutDashboard },
-  { type: 'soon', label: 'Planejamento', icon: CalendarRange },
+  { type: 'link', href: '/planejamento', label: 'Planejamento', icon: CalendarRange },
   { type: 'soon', label: 'Lançamentos', icon: Receipt },
   { type: 'soon', label: 'Receitas', icon: ArrowUpCircle },
   { type: 'soon', label: 'Gastos', icon: ArrowDownCircle },
@@ -73,14 +74,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { confirmIfDirty, isDirty } = useUnsavedChanges();
   const [user, setUser] = useState<User | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(
-    pathname.startsWith('/configuracoes'),
-  );
+  const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith('/configuracoes'));
 
   useEffect(() => {
     setSettingsOpen(pathname.startsWith('/configuracoes'));
@@ -126,15 +126,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
-  async function handleSelectWorkspace(ws: Workspace) {
-    await fetch('/api/bff/workspaces/select', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workspaceId: ws.id }),
+  function handleSelectWorkspace(ws: Workspace) {
+    confirmIfDirty(async () => {
+      await fetch('/api/bff/workspaces/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId: ws.id }),
+      });
+      setCurrentWorkspace(ws);
+      setWsDropdownOpen(false);
+      router.refresh();
     });
-    setCurrentWorkspace(ws);
-    setWsDropdownOpen(false);
-    router.refresh();
   }
 
   const userInitials = useMemo(() => initials(user?.name ?? 'PP'), [user?.name]);
@@ -179,9 +181,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <span>
               <span className="workspace-label">Planejamento</span>
-              <span className="workspace-name">
-                {currentWorkspace?.name ?? 'Selecionar...'}
-              </span>
+              <span className="workspace-name">{currentWorkspace?.name ?? 'Selecionar...'}</span>
             </span>
             <ChevronDown size={16} />
           </button>
@@ -270,6 +270,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`nav-item ${active ? 'is-active' : ''}`}
+                onClick={(event) => {
+                  if (!isDirty) return;
+                  event.preventDefault();
+                  confirmIfDirty(() => {
+                    router.push(item.href);
+                  });
+                }}
               >
                 <item.icon size={18} aria-hidden />
                 <span>{item.label}</span>

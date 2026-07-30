@@ -14,7 +14,10 @@ export class InMemorySubcategoryRepository implements SubcategoryRepository {
     return null;
   }
 
-  async findByCategoryAndWorkspace(categoryId: string, workspaceId: string): Promise<Subcategory[]> {
+  async findByCategoryAndWorkspace(
+    categoryId: string,
+    workspaceId: string,
+  ): Promise<Subcategory[]> {
     return [...this.items.values()]
       .filter((s) => s.categoryId === categoryId && s.workspaceId === workspaceId)
       .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'pt-BR'));

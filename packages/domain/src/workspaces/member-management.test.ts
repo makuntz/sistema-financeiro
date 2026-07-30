@@ -1,11 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import type { DomainError } from '../shared/domain-error.js';
 import { InMemoryAuditLogger } from '../shared/audit.js';
-import {
-  ChangeMemberRole,
-  DeactivateMember,
-  LeaveWorkspace,
-} from './member-use-cases.js';
+import { ChangeMemberRole, DeactivateMember, LeaveWorkspace } from './member-use-cases.js';
 import { InMemoryWorkspaceMemberRepository } from './in-memory-workspace-repositories.js';
 import { WorkspaceMember } from './workspace-member.js';
 

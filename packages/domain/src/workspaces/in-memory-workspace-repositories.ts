@@ -60,9 +60,7 @@ export class InMemoryWorkspaceMemberRepository implements WorkspaceMemberReposit
   }
 
   async listActiveByUser(userId: string): Promise<WorkspaceMember[]> {
-    return [...this.items.values()].filter(
-      (member) => member.userId === userId && member.isActive,
-    );
+    return [...this.items.values()].filter((member) => member.userId === userId && member.isActive);
   }
 
   async listActiveByWorkspace(workspaceId: string): Promise<MemberWithUser[]> {
@@ -80,8 +78,7 @@ export class InMemoryWorkspaceMemberRepository implements WorkspaceMemberReposit
 
   async countActiveOwners(workspaceId: string): Promise<number> {
     return [...this.items.values()].filter(
-      (member) =>
-        member.workspaceId === workspaceId && member.isActive && member.role === 'owner',
+      (member) => member.workspaceId === workspaceId && member.isActive && member.role === 'owner',
     ).length;
   }
 
@@ -118,9 +115,7 @@ export class InMemoryWorkspaceInvitationRepository implements WorkspaceInvitatio
   }
 
   async listByWorkspace(workspaceId: string): Promise<WorkspaceInvitation[]> {
-    return [...this.items.values()].filter(
-      (invitation) => invitation.workspaceId === workspaceId,
-    );
+    return [...this.items.values()].filter((invitation) => invitation.workspaceId === workspaceId);
   }
 
   async save(invitation: WorkspaceInvitation): Promise<void> {

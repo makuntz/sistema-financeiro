@@ -1,7 +1,12 @@
 'use client';
 
 import { AppShell } from '../../components/app-shell';
+import { UnsavedChangesProvider } from '../../components/unsaved-changes';
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <UnsavedChangesProvider>
+      <AppShell>{children}</AppShell>
+    </UnsavedChangesProvider>
+  );
 }

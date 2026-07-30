@@ -30,10 +30,7 @@ const envSchema = z
       });
     }
 
-    if (
-      value.NODE_ENV === 'production' &&
-      value.JWT_SECRET.includes('change-me')
-    ) {
+    if (value.NODE_ENV === 'production' && value.JWT_SECRET.includes('change-me')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['JWT_SECRET'],

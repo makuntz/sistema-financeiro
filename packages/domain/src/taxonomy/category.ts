@@ -21,11 +21,9 @@ const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 export function validateCategoryColor(color: string): void {
   if (!HEX_COLOR_REGEX.test(color)) {
-    throw new DomainError(
-      'INVALID_CATEGORY_COLOR',
-      'A cor deve estar no formato #RRGGBB.',
-      { color },
-    );
+    throw new DomainError('INVALID_CATEGORY_COLOR', 'A cor deve estar no formato #RRGGBB.', {
+      color,
+    });
   }
 }
 
@@ -175,7 +173,10 @@ export class Category {
     return this.props.updatedAt;
   }
 
-  update(input: { name?: string; color?: string; icon?: string; order?: number }, now: Date = new Date()): void {
+  update(
+    input: { name?: string; color?: string; icon?: string; order?: number },
+    now: Date = new Date(),
+  ): void {
     if (input.name !== undefined) {
       const categoryName = CategoryName.create(input.name);
       this.props.name = categoryName.value;

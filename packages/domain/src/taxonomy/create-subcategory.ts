@@ -24,11 +24,9 @@ export class CreateSubcategory {
     );
 
     if (!category) {
-      throw new DomainError(
-        'CATEGORY_NOT_FOUND',
-        'Categoria não encontrada.',
-        { categoryId: input.categoryId },
-      );
+      throw new DomainError('CATEGORY_NOT_FOUND', 'Categoria não encontrada.', {
+        categoryId: input.categoryId,
+      });
     }
 
     if (!category.isActive) {

@@ -32,7 +32,12 @@ import type { Env } from '@pp-planning/config/env';
 import { registerErrorHandler } from './shared/error-handler.js';
 import { registerRequestId } from './shared/request-id.js';
 import { registerHealthRoute } from './modules/system/health-route.js';
-import { PrismaCategoryRepository, PrismaSubcategoryRepository, registerTaxonomyRoutes } from './modules/taxonomy/index.js';
+import {
+  PrismaCategoryRepository,
+  PrismaSubcategoryRepository,
+  registerTaxonomyRoutes,
+} from './modules/taxonomy/index.js';
+import { PrismaMonthlyPlanRepository, registerPlanningRoutes } from './modules/planning/index.js';
 import { registerAuthRoutes } from './modules/identity/presentation/http/auth-routes.js';
 import { registerWorkspaceRoutes } from './modules/workspaces/presentation/http/workspace-routes.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
@@ -203,6 +208,7 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
         { name: 'Workspaces', description: 'Workspace management' },
         { name: 'Invitations', description: 'Workspace invitations' },
         { name: 'Taxonomy', description: 'Categories and taxonomy' },
+        { name: 'Planning', description: 'Monthly planning' },
       ],
     },
   });
@@ -249,6 +255,19 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
     categoryRepository,
     categoryWithSubcategoriesProvider: prismaCategoryRepo,
     subcategoryRepository,
+    authenticate,
+    requireWorkspace,
+    requirePermission,
+  });
+
+  const prismaMonthlyPlanRepo = new PrismaMonthlyPlanRepository(prisma);
+
+  await registerPlanningRoutes(app, {
+    planRepository: prismaMonthlyPlanRepo,
+    planItemRepository: prismaMonthlyPlanRepo,
+    planStore: prismaMonthlyPlanRepo,
+    taxonomyProvider: prismaMonthlyPlanRepo,
+    auditLogger,
     authenticate,
     requireWorkspace,
     requirePermission,
