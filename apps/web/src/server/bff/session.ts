@@ -11,13 +11,19 @@ type RefreshResult = string | null;
  */
 const refreshByTokenHash = new Map<string, Promise<RefreshResult>>();
 
+const REFRESH_RETRY_ATTEMPTS = 4;
+const REFRESH_RETRY_DELAY_MS = process.env.VITEST ? 1 : 250;
+
 function hashRefreshToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-/** Auth failures that mean the refresh session is dead — safe to clear cookies. */
-function isDefinitiveRefreshFailure(status: number): boolean {
-  return status === 401 || status === 403;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientRefreshFailure(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
 }
 
 /**
@@ -25,9 +31,13 @@ function isDefinitiveRefreshFailure(status: number): boolean {
  * Concurrent callers that share the same refresh token coalesce into one HTTP refresh.
  * Distinct sessions never share a Promise.
  *
- * Cookies are cleared only on definitive auth failures (401/403) or a malformed
- * success payload. Network errors and 5xx keep cookies so a local API restart
- * does not force the user to log in again.
+ * Cookies are never cleared here on refresh failure. Parallel BFF calls often race
+ * after refresh-token rotation: the losing request gets 401 with the previous token.
+ * Clearing cookies on that 401 would wipe the winner's new Set-Cookie and force login
+ * after every API/web restart. Logout is the only path that clears auth cookies.
+ *
+ * Network errors and 5xx are retried briefly so a local API boot does not fail the
+ * first page load after restart.
  */
 export async function refreshOnce(): Promise<RefreshResult> {
   const refreshToken = await getRefreshToken();
@@ -41,37 +51,46 @@ export async function refreshOnce(): Promise<RefreshResult> {
   if (existing) return existing;
 
   const promise = (async (): Promise<RefreshResult> => {
-    let res: Response;
-    try {
-      res = await apiFetch('/v1/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken }),
-      });
-    } catch {
-      // API unreachable (e.g. still booting after a local restart).
-      return null;
-    }
-
-    if (!res.ok) {
-      if (isDefinitiveRefreshFailure(res.status)) {
-        await clearAuthCookies();
+    for (let attempt = 1; attempt <= REFRESH_RETRY_ATTEMPTS; attempt++) {
+      let res: Response;
+      try {
+        res = await apiFetch('/v1/auth/refresh', {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch {
+        // API unreachable (e.g. still booting after a local restart).
+        if (attempt < REFRESH_RETRY_ATTEMPTS) {
+          await sleep(REFRESH_RETRY_DELAY_MS * attempt);
+          continue;
+        }
+        return null;
       }
-      return null;
+
+      if (!res.ok) {
+        if (isTransientRefreshFailure(res.status) && attempt < REFRESH_RETRY_ATTEMPTS) {
+          await sleep(REFRESH_RETRY_DELAY_MS * attempt);
+          continue;
+        }
+        // Keep cookies: rotation races and brief API outages must not log the user out.
+        return null;
+      }
+
+      const data = (await res.json()) as {
+        accessToken?: string;
+        refreshToken?: string;
+        tokens?: { accessToken?: string; refreshToken?: string };
+      };
+      const accessToken = data.tokens?.accessToken ?? data.accessToken;
+      const nextRefreshToken = data.tokens?.refreshToken ?? data.refreshToken;
+      if (!accessToken || !nextRefreshToken) {
+        return null;
+      }
+      await setAuthCookies(accessToken, nextRefreshToken);
+      return accessToken;
     }
 
-    const data = (await res.json()) as {
-      accessToken?: string;
-      refreshToken?: string;
-      tokens?: { accessToken?: string; refreshToken?: string };
-    };
-    const accessToken = data.tokens?.accessToken ?? data.accessToken;
-    const nextRefreshToken = data.tokens?.refreshToken ?? data.refreshToken;
-    if (!accessToken || !nextRefreshToken) {
-      await clearAuthCookies();
-      return null;
-    }
-    await setAuthCookies(accessToken, nextRefreshToken);
-    return accessToken;
+    return null;
   })();
 
   refreshByTokenHash.set(key, promise);

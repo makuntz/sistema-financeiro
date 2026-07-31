@@ -226,7 +226,7 @@ describe('PlanejamentoPage', () => {
     expect(screen.queryByRole('button', { name: /Copiar mês anterior/i })).not.toBeInTheDocument();
   });
 
-  it('shows Disponível and Utilizado headers on gastos', async () => {
+  it('shows expense subcategories without column subtitle row', async () => {
     navigation.tab = 'gastos';
     mockFetch('member');
     renderPlanning();
@@ -235,22 +235,17 @@ describe('PlanejamentoPage', () => {
       expect(screen.getByRole('button', { name: /Moradia/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('columnheader', { name: 'Categoria / Subcategoria' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Planejado' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Realizado' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Disponível' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Utilizado' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Ver valores/i })).toBeInTheDocument();
-
     const categoryToggle = screen.getByRole('button', { name: /Moradia/i });
     if (categoryToggle.getAttribute('aria-expanded') !== 'true') {
       fireEvent.click(categoryToggle);
     }
 
     expect(await screen.findByText('Aluguel')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ver valores/i })).toBeInTheDocument();
   });
 
-  it('shows income column headers on receitas tab', async () => {
+  it('shows income subcategories without column subtitle row', async () => {
     navigation.tab = 'receitas';
     mockFetch('member');
     renderPlanning();
@@ -259,9 +254,12 @@ describe('PlanejamentoPage', () => {
       expect(screen.getByRole('button', { name: /Salário/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('columnheader', { name: 'Fonte de receita' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Planejado' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Realizado' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Diferença' })).toBeInTheDocument();
+    const categoryToggle = screen.getByRole('button', { name: /Salário/i });
+    if (categoryToggle.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(categoryToggle);
+    }
+
+    expect(await screen.findByText('Principal')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader')).not.toBeInTheDocument();
   });
 });

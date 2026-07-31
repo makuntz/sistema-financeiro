@@ -13,7 +13,6 @@ import {
   ShoppingCart,
   Wallet,
 } from 'lucide-react';
-import { CategoryIconBadge } from '@/lib/category-icons';
 import { getPermissions, normalizeRole } from '@/lib/permissions';
 import {
   buildPlanningHref,
@@ -104,6 +103,54 @@ function todayDateOnly(): string {
 function formatDisplayDate(dateOnly: string): string {
   const [y, m, d] = dateOnly.split('-');
   return `${d}/${m}/${y}`;
+}
+
+type ParsedLedgerDescription = {
+  observation: string;
+  paymentMethod: string | null;
+  bank: string | null;
+  installment: string | null;
+};
+
+/** Normaliza rótulos antigos/novos para Crédito, Débito ou Pix. */
+function formatPaymentLabel(raw: string | null): string | null {
+  if (!raw) return null;
+  const value = raw.trim().toLowerCase();
+  if (value.includes('crédito') || value.includes('credito')) return 'Crédito';
+  if (value.includes('débito') || value.includes('debito')) return 'Débito';
+  if (value.includes('pix')) return 'Pix';
+  return null;
+}
+
+/** Extrai observação e metadados que o formulário novo grava em `description`. */
+function parseLedgerDescription(description: string): ParsedLedgerDescription {
+  const parts = description
+    .split(' · ')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const observationParts: string[] = [];
+  let paymentMethod: string | null = null;
+  let bank: string | null = null;
+  let installment: string | null = null;
+
+  for (const part of parts) {
+    if (part.startsWith('Pagamento:')) {
+      paymentMethod = part.slice('Pagamento:'.length).trim() || null;
+    } else if (part.startsWith('Banco:')) {
+      bank = part.slice('Banco:'.length).trim() || null;
+    } else if (part.startsWith('Parcelado:')) {
+      installment = part.slice('Parcelado:'.length).trim() || null;
+    } else {
+      observationParts.push(part);
+    }
+  }
+
+  return {
+    observation: observationParts.join(' · ') || '—',
+    paymentMethod,
+    bank,
+    installment,
+  };
 }
 
 export function LancamentosPage() {
@@ -278,7 +325,7 @@ export function LancamentosPage() {
 
   async function saveEntry() {
     if (!form.description.trim() || !form.subcategoryId || form.amountInCents === '0') {
-      setError('Preencha descrição, subcategoria e um valor maior que zero.');
+      setError('Preencha observação, subcategoria e um valor maior que zero.');
       return;
     }
     setSaving(true);
@@ -364,11 +411,6 @@ export function LancamentosPage() {
   const title = formatMonthTitle(year, month);
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
-  const categoryById = useMemo(() => {
-    const map = new Map<string, Category>();
-    for (const category of categories) map.set(category.id, category);
-    return map;
-  }, [categories]);
 
   return (
     <div className="lancamentos-page">
@@ -413,7 +455,10 @@ export function LancamentosPage() {
       </div>
 
       {summary ? (
-        <div className="stat-grid planning-summary-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <div
+          className="stat-grid planning-summary-cards"
+          style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}
+        >
           <article className="stat-card is-income">
             <div className="stat-card-label">
               <span className="planning-card-icon is-income" aria-hidden>
@@ -445,7 +490,9 @@ export function LancamentosPage() {
               </span>
               Saldo realizado
             </div>
-            <div className={`stat-card-value${summary.balanceInCents.startsWith('-') ? ' is-expense' : ' is-income'}`}>
+            <div
+              className={`stat-card-value${summary.balanceInCents.startsWith('-') ? ' is-expense' : ' is-income'}`}
+            >
               <MoneyDisplay
                 cents={BigInt(summary.balanceInCents)}
                 tone={summary.balanceInCents.startsWith('-') ? 'expense' : 'income'}
@@ -509,82 +556,94 @@ export function LancamentosPage() {
         </section>
       ) : (
         <section className="planning-table-panel lancamentos-table-panel">
-          <div className="lancamentos-table-head">
-            <span>Data</span>
-            <span>Descrição</span>
-            <span>Categoria</span>
-            <span>Pessoa</span>
-            <span>Valor</span>
-            {canWrite ? <span>Ações</span> : null}
-          </div>
-          <ul className="lancamentos-table-list">
-            {items.map((item) => {
-              const category = categoryById.get(item.categoryId);
-              return (
-                <li
-                  key={item.id}
-                  className={`lancamentos-table-row${item.voidedAt ? ' is-voided' : ''}`}
-                >
-                  <span className="lancamentos-date">{formatDisplayDate(item.occurredOn)}</span>
-                  <div className="lancamentos-desc">
-                    <strong>{item.description}</strong>
-                    {item.voidedAt ? <small>Excluído</small> : null}
-                  </div>
-                  <div className="lancamentos-category">
-                    <CategoryIconBadge
-                      icon={category?.icon ?? (item.kind === 'income' ? 'wallet' : 'shopping-cart')}
-                      color={
-                        category?.color ??
-                        (item.kind === 'income' ? '#059669' : '#E11D48')
-                      }
-                      size={14}
-                    />
-                    <div>
-                      <strong>{item.categoryName || '—'}</strong>
-                      <small>{item.subcategoryName || '—'}</small>
-                    </div>
-                  </div>
-                  <span>{item.attributedMemberName ?? '—'}</span>
-                  <span
-                    className={`lancamentos-amount${item.kind === 'income' ? ' is-income' : ' is-expense'}`}
+          <div className="lancamentos-table-scroll">
+            <div className="lancamentos-table-head" role="row">
+              <span>Data</span>
+              <span>Categoria</span>
+              <span>Grupo</span>
+              <span>Subgrupo</span>
+              <span>Pagamento</span>
+              <span>Banco</span>
+              <span>Valor</span>
+              <span>Parcela</span>
+              <span>Observação</span>
+              {canWrite ? <span className="lancamentos-col-actions">Ações</span> : null}
+            </div>
+            <ul className="lancamentos-table-list">
+              {items.map((item) => {
+                const parsedDescription = parseLedgerDescription(item.description);
+                return (
+                  <li
+                    key={item.id}
+                    className={`lancamentos-table-row${item.voidedAt ? ' is-voided' : ''}`}
                   >
-                    {item.kind === 'expense' ? '−' : '+'}
-                    {formatCentsToBRL(item.amountInCents).replace(/^R\$\s*/, 'R$ ')}
-                  </span>
-                  {canWrite ? (
-                    <div className="lancamentos-actions">
-                      {!item.voidedAt ? (
-                        <>
-                          <button
-                            type="button"
-                            aria-label={`Editar ${item.description}`}
-                            onClick={() => openEdit(item)}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Excluir ${item.description}`}
-                            onClick={() => setVoidTarget(item)}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          aria-label={`Restaurar ${item.description}`}
-                          onClick={() => void restoreEntry(item)}
-                        >
-                          <RotateCcw size={16} />
-                        </button>
-                      )}
+                    <span className="lancamentos-date">{formatDisplayDate(item.occurredOn)}</span>
+                    <div className="lancamentos-category">
+                      <span className="lancamentos-category-name">
+                        {item.categoryName || '—'}
+                      </span>
                     </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
+                    <span
+                      className={`lancamentos-group${item.kind === 'income' ? ' is-income' : ' is-expense'}`}
+                    >
+                      {item.kind === 'income' ? 'Receitas' : 'Gastos'}
+                    </span>
+                    <span className="lancamentos-subgroup">{item.subcategoryName || '—'}</span>
+                    <span className="lancamentos-payment">
+                      {formatPaymentLabel(parsedDescription.paymentMethod) ?? '—'}
+                    </span>
+                    <span className="lancamentos-bank">
+                      {parsedDescription.bank ?? '—'}
+                    </span>                    <span
+                      className={`lancamentos-amount${item.kind === 'income' ? ' is-income' : ' is-expense'}`}
+                    >
+                      {item.kind === 'expense' ? '−' : '+'}
+                      {formatCentsToBRL(item.amountInCents).replace(/^R\$\s*/, 'R$ ')}
+                    </span>
+                    <span className="lancamentos-parcela">
+                      {parsedDescription.installment ?? '—'}
+                    </span>
+                    <div className="lancamentos-note">
+                      <span title={parsedDescription.observation}>
+                        {parsedDescription.observation}
+                      </span>
+                      {item.voidedAt ? <small>Excluído</small> : null}
+                    </div>
+                    {canWrite ? (
+                      <div className="lancamentos-actions">
+                        {!item.voidedAt ? (
+                          <>
+                            <button
+                              type="button"
+                              aria-label={`Editar ${item.description}`}
+                              onClick={() => openEdit(item)}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Excluir ${item.description}`}
+                              onClick={() => setVoidTarget(item)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={`Restaurar ${item.description}`}
+                            onClick={() => void restoreEntry(item)}
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </section>
       )}
 
@@ -634,7 +693,7 @@ export function LancamentosPage() {
                 </select>
               </label>
               <Input
-                label="Descrição"
+                label="Observação"
                 value={form.description}
                 onChange={(e) => updateForm({ description: e.target.value })}
               />

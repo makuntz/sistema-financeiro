@@ -5,7 +5,6 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CategoryIconBadge } from '@/lib/category-icons';
 import { PlanningMoneyCell } from './planning-money-cell';
 import { PlanningSubcategoryRow } from './planning-subcategory-row';
-import { PlanningUsageCell } from './planning-usage-cell';
 import {
   computeDisplayDifference,
   differenceHint,
@@ -61,63 +60,66 @@ export function PlanningCategorySection({
   );
   const hint = differenceHint(category.type, remaining);
   const panelId = `planning-category-panel-${category.id}`;
-  const showUsage = category.type === 'expense';
-  const gridClass = showUsage ? 'planning-grid is-expense' : 'planning-grid is-income';
 
   return (
-    <div className="planning-category-block" style={{ opacity: category.isActive ? 1 : 0.65 }}>
+    <section
+      className="planning-table-panel planning-category-panel"
+      style={{ opacity: category.isActive ? 1 : 0.65 }}
+    >
       <button
         type="button"
-        className={`${gridClass} planning-category-header`}
+        className="planning-category-summary"
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={panelId}
       >
-        <div className="planning-col-name planning-category-identity">
+        <span className="planning-category-identity">
           <CategoryIconBadge icon={category.icon} color={category.color} size={16} />
-          <div className="planning-category-text">
+          <span className="planning-category-text">
             <span className="planning-category-name">{category.name}</span>
             <span className="planning-category-count">
               {category.subcategories.length}{' '}
               {category.subcategories.length === 1 ? 'subcategoria' : 'subcategorias'}
             </span>
-          </div>
+          </span>
           {!category.isActive ? <Badge variant="warning">Arquivada</Badge> : null}
-        </div>
+        </span>
 
-        <div className="planning-metrics-row">
-          <div className="planning-col-metric">
-            <span className="planning-mobile-label">{labels.planned}</span>
-            {hideValues ? (
+        {hideValues ? (
+          <>
+            <span className="planning-category-summary-metric">
               <span className="planning-hidden-value">••••</span>
-            ) : (
+            </span>
+            <span className="planning-category-summary-metric">
+              <span className="planning-hidden-value">••••</span>
+            </span>
+            <span className="planning-category-summary-metric">
+              <span className="planning-hidden-value">••••</span>
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="planning-category-summary-metric">
+              <span className="planning-category-summary-label">{labels.planned}</span>
               <PlanningMoneyCell
                 cents={category.plannedInCents}
                 tone={toneForPlanned()}
                 label={labels.planned}
                 emphasize
               />
-            )}
-          </div>
-          <div className="planning-col-metric">
-            <span className="planning-mobile-label">{labels.realized}</span>
-            {hideValues ? (
-              <span className="planning-hidden-value">••••</span>
-            ) : (
+            </span>
+            <span className="planning-category-summary-metric">
+              <span className="planning-category-summary-label">{labels.realized}</span>
               <PlanningMoneyCell
                 cents={category.realizedInCents}
                 tone={category.type === 'expense' ? 'negative' : toneForRealized()}
                 label={labels.realized}
                 emphasize
               />
-            )}
-          </div>
-          <div className="planning-col-metric planning-col-remaining">
-            <span className="planning-mobile-label">{labels.remaining}</span>
-            {hideValues ? (
-              <span className="planning-hidden-value">••••</span>
-            ) : (
-              <div className="planning-remaining-stack">
+            </span>
+            <span className="planning-category-summary-metric">
+              <span className="planning-category-summary-label">{labels.remaining}</span>
+              <span className="planning-remaining-stack">
                 <PlanningMoneyCell
                   cents={remaining}
                   tone={toneForRemaining(remaining)}
@@ -125,33 +127,23 @@ export function PlanningCategorySection({
                   emphasize
                 />
                 {hint ? <span className="planning-remaining-hint">{hint}</span> : null}
-              </div>
-            )}
-          </div>
-          {showUsage ? (
-            <div className="planning-col-metric planning-col-usage">
-              <span className="planning-mobile-label">{labels.utilized}</span>
-              <PlanningUsageCell
-                plannedInCents={category.plannedInCents}
-                realizedInCents={category.realizedInCents}
-                hideValues={hideValues}
-              />
-            </div>
-          ) : null}
-        </div>
+              </span>
+            </span>
+          </>
+        )}
 
-        <span aria-hidden="true" className="planning-chevron">
+        <span className="planning-chevron-btn" aria-hidden="true">
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </span>
       </button>
 
       {isOpen ? (
-        <div id={panelId} className="planning-category-body">
-          {category.subcategories.length === 0 ? (
-            <p className="planning-empty-subs">Nenhuma subcategoria</p>
-          ) : (
-            <ul className="planning-sub-list" role="table">
-              {category.subcategories.map((sub) => (
+        <div className="planning-table-scroll" id={panelId}>
+          <div className="planning-sub-list" role="table" aria-label={category.name}>
+            {category.subcategories.length === 0 ? (
+              <p className="planning-empty-subs">Nenhuma subcategoria</p>
+            ) : (
+              category.subcategories.map((sub) => (
                 <PlanningSubcategoryRow
                   key={sub.id}
                   name={sub.name}
@@ -164,11 +156,11 @@ export function PlanningCategorySection({
                   hideValues={hideValues}
                   onPlannedChange={(value) => onPlannedChange(sub.id, value)}
                 />
-              ))}
-            </ul>
-          )}
+              ))
+            )}
+          </div>
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }

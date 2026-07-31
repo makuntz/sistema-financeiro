@@ -12,11 +12,10 @@ import {
 describe('planning-metrics', () => {
   it('returns expense column labels', () => {
     expect(getPlanningColumnLabels('expense')).toEqual({
-      name: 'Categoria / Subcategoria',
+      name: 'Subcategoria',
       planned: 'Planejado',
       realized: 'Realizado',
       remaining: 'Disponível',
-      utilized: 'Utilizado',
     });
   });
 
