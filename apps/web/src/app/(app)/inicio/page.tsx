@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, MoneyDisplay } from '@pp-planning/ui-web';
@@ -138,7 +138,7 @@ function BarCompareChart({ points }: { points: MonthPoint[] }) {
   );
 }
 
-export default function InicioPage() {
+function InicioPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const parsed = useMemo(
@@ -517,5 +517,22 @@ export default function InicioPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+export default function InicioRoute() {
+  return (
+    <Suspense
+      fallback={
+        <div className="page-header">
+          <div>
+            <h1>Resumo</h1>
+            <p>Carregando…</p>
+          </div>
+        </div>
+      }
+    >
+      <InicioPage />
+    </Suspense>
   );
 }
