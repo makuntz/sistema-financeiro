@@ -2,7 +2,7 @@
 
 Sistema de planejamento financeiro pessoal e familiar (nome provisório).
 
-Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites. A **Etapa 4** entrega o **Planejamento Mensal** (orçamento por subcategoria) e corrige o refresh do BFF.
+Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites. A **Etapa 4** entrega o **Planejamento Mensal** (orçamento por subcategoria). A **Etapa 5** entrega **Lançamentos** (receitas e gastos realizados) e a comparação **planejado versus realizado**.
 
 ## Stack
 
@@ -250,8 +250,27 @@ A pessoa convidada deve cadastrar-se ou entrar com o **mesmo e-mail** do convite
 5. **Copiar mês anterior** replica valores ativos; se o destino já tiver valores, a UI pede confirmação (`overwrite=true`).
 6. Viewer: somente leitura (sem editar/copiar).
 7. Concorrência: se outra pessoa salvou primeiro, a API retorna `PLAN_VERSION_CONFLICT` e a tela oferece **Recarregar planejamento**.
+8. Nas abas Receitas/Gastos, a tela mostra **planejado**, **realizado/recebido** e **disponível/diferença** a partir do relatório mensal (somente leitura; editar o planejamento não altera lançamentos).
 
-Receitas e gastos usam a mesma taxonomia (`Category.type`). Não há “realizado” nesta etapa — isso será o Ledger.
+### Lançamentos (web) — Etapa 5
+
+Na interface use sempre **Lançamentos** (não “Ledger”). Ledger é só o nome técnico do módulo de fatos financeiros.
+
+1. Abra **Lançamentos** (`/lancamentos`) ou `/lancamentos?ano=2026&mes=8`.
+2. Cards: receitas realizadas, gastos realizados, saldo realizado (competência do mês).
+3. **Novo lançamento**: tipo (Receita/Gasto), descrição, valor, data, competência, categoria, subcategoria, pessoa opcional (“Quem pagou?” / “Quem recebeu?”), observações.
+4. Competência padrão = mês/ano da data; após alterar competência manualmente, mudar a data **não** sobrescreve a competência.
+5. **Excluir lançamento** é exclusão lógica (void): sai dos totais, permanece auditável e pode ser **restaurado**.
+6. Filtros: tipo, busca, incluídos/excluídos; paginação na API.
+7. Viewer: somente leitura.
+8. Concorrência: `expectedVersion` → `LEDGER_ENTRY_VERSION_CONFLICT` com opção de recarregar.
+
+Comparação com o planejamento:
+
+- Usa **competência**, não a data do pagamento.
+- Gastos: diferença = planejado − realizado (disponível; pode ser negativo).
+- Receitas: diferença = realizado − planejado (acima/abaixo do previsto).
+- Endpoint: `GET /v1/reports/monthly-budget/:year/:month` (BFF: `/api/bff/reports/monthly-budget/...`).
 
 ### Testar concorrência (dois usuários)
 
@@ -259,9 +278,9 @@ Receitas e gastos usam a mesma taxonomia (`Category.type`). Não há “realizad
 2. Abra o mesmo mês em ambos, edite valores diferentes e salve no primeiro.
 3. Ao salvar no segundo com a versão antiga, deve aparecer o conflito — sem sobrescrita silenciosa.
 
-### Seed — categorias e planos demo
+### Seed — categorias, planos e lançamentos demo
 
-Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria categorias de despesa e receita, e planos do mês atual e do mês anterior (America/Sao_Paulo). O terminal imprime o ano/mês criados. O seed é **idempotente** — pode rodar duas vezes.
+Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria categorias, planos do mês atual e do mês anterior, e **lançamentos** demo (salário abaixo do previsto, mantimentos, presentes sem planejado, etc.). O seed é **idempotente**.
 
 | Tipo    | Categoria       | Subcategorias (exemplos)                                            |
 | ------- | --------------- | ------------------------------------------------------------------- |
@@ -269,9 +288,12 @@ Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria c
 | Despesa | Saúde           | Plano de saúde, Farmácia, Consultas, Exames                         |
 | Despesa | Transporte      | Combustível, Estacionamento, Transporte público, Manutenção veículo |
 | Despesa | Moradia         | Aluguel, Condomínio, Energia, Água, Internet                        |
+| Despesa | Presentes       | Presentes diversos (planejado zero no demo)                         |
 | Receita | Salários        | Salário principal, Segunda renda                                    |
 | Receita | Benefícios      | Vale-alimentação, Reembolsos                                        |
 | Receita | Outras receitas | Rendimentos, Receitas extras                                        |
+
+Credenciais demo: `demo.owner@pp-planning.local` / `demo.viewer@pp-planning.local` — senha `demo-senha-segura`.
 
 ## Documentação
 
@@ -280,6 +302,8 @@ Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria c
 - [ADRs](./docs/adr/)
 - [ADR-016 Planejamento mensal](./docs/adr/ADR-016-monthly-planning-model.md)
 - [ADR-017 Concorrência otimista](./docs/adr/ADR-017-planning-optimistic-concurrency.md)
+- [ADR-018 Ledger Entry](./docs/adr/ADR-018-ledger-entry-model.md)
+- [ADR-019 Planejado versus realizado](./docs/adr/ADR-019-planned-versus-realized-read-model.md)
 - [Glossário](./docs/product/domain-glossary.md)
 - [Modelo de dados](./docs/architecture/data-model.md)
 - [Design system](./docs/architecture/design-system.md)

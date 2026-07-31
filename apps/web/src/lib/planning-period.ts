@@ -71,7 +71,7 @@ export function parsePlanningSearchParams(searchParams: URLSearchParams): {
     normalized = true;
   }
 
-  let tab: PlanningTab = 'resumo';
+  let tab: PlanningTab = 'gastos';
   if (tabRaw === 'receitas' || tabRaw === 'gastos' || tabRaw === 'resumo') {
     tab = tabRaw;
   } else if (tabRaw) {

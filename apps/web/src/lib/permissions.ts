@@ -10,6 +10,7 @@ export type Permissions = {
   canInvite: boolean;
   canWriteTaxonomy: boolean;
   canWritePlanning: boolean;
+  canWriteLedger: boolean;
   canPromoteOwner: boolean;
   canRemoveMembers: boolean;
   canChangeRoles: boolean;
@@ -31,6 +32,7 @@ export function getPermissions(role: WorkspaceRole | string): Permissions {
         canInvite: true,
         canWriteTaxonomy: true,
         canWritePlanning: true,
+        canWriteLedger: true,
         canPromoteOwner: true,
         canRemoveMembers: true,
         canChangeRoles: true,
@@ -41,6 +43,7 @@ export function getPermissions(role: WorkspaceRole | string): Permissions {
         canInvite: true,
         canWriteTaxonomy: true,
         canWritePlanning: true,
+        canWriteLedger: true,
         canPromoteOwner: false,
         canRemoveMembers: true,
         canChangeRoles: true,
@@ -51,6 +54,7 @@ export function getPermissions(role: WorkspaceRole | string): Permissions {
         canInvite: false,
         canWriteTaxonomy: true,
         canWritePlanning: true,
+        canWriteLedger: true,
         canPromoteOwner: false,
         canRemoveMembers: false,
         canChangeRoles: false,
@@ -61,6 +65,7 @@ export function getPermissions(role: WorkspaceRole | string): Permissions {
         canInvite: false,
         canWriteTaxonomy: false,
         canWritePlanning: false,
+        canWriteLedger: false,
         canPromoteOwner: false,
         canRemoveMembers: false,
         canChangeRoles: false,

@@ -1,28 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Alert,
-  Badge,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  MoneyDisplay,
-  MoneyInput,
-} from '@pp-planning/ui-web';
-import { formatCentsToBRL } from '@pp-planning/contracts';
 import {
   CalendarRange,
-  ChevronDown,
+  Check,
   ChevronLeft,
   ChevronRight,
   Copy,
+  Eye,
+  EyeOff,
+  LayoutGrid,
+  List,
   Pencil,
   RotateCcw,
 } from 'lucide-react';
 import { useUnsavedChanges } from '@/components/unsaved-changes';
+import { PlanningCategorySection } from '@/features/planning/planning-category-section';
+import { PlanningColumnHeader } from '@/features/planning/planning-column-header';
+import { PlanningSidePanel } from '@/features/planning/planning-side-panel';
+import { PlanningSummaryCards } from '@/features/planning/planning-summary-cards';
+import { getPlanningColumnLabels } from '@/features/planning/planning-metrics';
 import { getPermissions, normalizeRole } from '@/lib/permissions';
 import {
   addCentsStrings,
@@ -33,6 +29,10 @@ import {
   subtractCentsStrings,
   type PlanningTab,
 } from '@/lib/planning-period';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, MoneyDisplay } from '@pp-planning/ui-web';
 
 type SubcategoryPlan = {
   id: string;
@@ -71,6 +71,34 @@ type MonthlyPlan = {
 };
 
 type DraftAmounts = Record<string, string>;
+
+type ComparisonSub = {
+  subcategoryId: string;
+  plannedInCents: string;
+  realizedInCents: string;
+  differenceInCents: string;
+};
+
+type ComparisonCategory = {
+  categoryId: string;
+  kind: 'income' | 'expense';
+  plannedInCents: string;
+  realizedInCents: string;
+  differenceInCents: string;
+  subcategories: ComparisonSub[];
+};
+
+type BudgetComparison = {
+  totalPlannedIncomeInCents: string;
+  totalRealizedIncomeInCents: string;
+  totalPlannedExpenseInCents: string;
+  totalRealizedExpenseInCents: string;
+  projectedBalanceInCents?: string;
+  realizedBalanceInCents?: string;
+  incomeBalanceInCents: string;
+  expenseBalanceInCents: string;
+  categories: ComparisonCategory[];
+};
 
 const TABS: { id: PlanningTab; label: string }[] = [
   { id: 'resumo', label: 'Resumo' },
@@ -114,6 +142,13 @@ function categorySubtotal(category: CategoryPlan, draft: DraftAmounts): string {
   );
 }
 
+function countSources(categories: CategoryPlan[]) {
+  return {
+    categoryCount: categories.length,
+    subcategoryCount: categories.reduce((acc, cat) => acc + cat.subcategories.length, 0),
+  };
+}
+
 export default function PlanejamentoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -125,6 +160,7 @@ export default function PlanejamentoPage() {
   );
 
   const [plan, setPlan] = useState<MonthlyPlan | null>(null);
+  const [comparison, setComparison] = useState<BudgetComparison | null>(null);
   const [draft, setDraft] = useState<DraftAmounts>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -136,9 +172,31 @@ export default function PlanejamentoPage() {
   const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [role, setRole] = useState('viewer');
+  const [showValues, setShowValues] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const permissions = getPermissions(role);
   const canWrite = permissions.canWritePlanning;
+
+  const comparisonBySub = useMemo(() => {
+    const map = new Map<string, ComparisonSub & { kind: 'income' | 'expense' }>();
+    if (!comparison) return map;
+    for (const cat of comparison.categories) {
+      for (const sub of cat.subcategories) {
+        map.set(sub.subcategoryId, { ...sub, kind: cat.kind });
+      }
+    }
+    return map;
+  }, [comparison]);
+
+  const comparisonByCategory = useMemo(() => {
+    const map = new Map<string, ComparisonCategory>();
+    if (!comparison) return map;
+    for (const cat of comparison.categories) {
+      map.set(cat.categoryId, cat);
+    }
+    return map;
+  }, [comparison]);
 
   const loadPlan = useCallback(async () => {
     setLoading(true);
@@ -146,19 +204,29 @@ export default function PlanejamentoPage() {
     setSuccessMessage('');
     setVersionConflict(false);
     try {
-      const res = await fetch(`/api/bff/planning/monthly/${year}/${month}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+      const [planRes, comparisonRes] = await Promise.all([
+        fetch(`/api/bff/planning/monthly/${year}/${month}`),
+        fetch(`/api/bff/reports/monthly-budget/${year}/${month}`),
+      ]);
+      if (!planRes.ok) {
+        const body = await planRes.json().catch(() => ({}));
         throw new Error(body?.error?.message ?? body?.error ?? 'Erro ao carregar planejamento');
       }
-      const data = (await res.json()) as MonthlyPlan;
+      const data = (await planRes.json()) as MonthlyPlan;
       setPlan(data);
       setDraft(buildDraftFromPlan(data));
       setEditMode(false);
       setDirty(false);
+
+      if (comparisonRes.ok) {
+        setComparison((await comparisonRes.json()) as BudgetComparison);
+      } else {
+        setComparison(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar planejamento');
       setPlan(null);
+      setComparison(null);
     } finally {
       setLoading(false);
     }
@@ -232,6 +300,16 @@ export default function PlanejamentoPage() {
     if (tab === 'gastos') return plan.categories.filter((c) => c.type === 'expense');
     return plan.categories;
   }, [plan, tab]);
+
+  useEffect(() => {
+    if (!plan || tab === 'resumo') return;
+    const first = filteredCategories[0];
+    if (!first) return;
+    setExpanded((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set([first.id]);
+    });
+  }, [plan, tab, filteredCategories]);
 
   function navigateMonth(delta: number) {
     const next = shiftMonth(year, month, delta);
@@ -400,44 +478,62 @@ export default function PlanejamentoPage() {
   }
 
   const hasCategories = (plan?.categories.length ?? 0) > 0;
-  const balanceTone =
-    BigInt(displayTotals.projectedBalanceInCents || '0') >= 0n ? 'income' : 'expense';
+  const incomeRealized = comparison?.totalRealizedIncomeInCents ?? '0';
+  const expenseRealized = comparison?.totalRealizedExpenseInCents ?? '0';
+  const tabSourceStats = countSources(filteredCategories);
 
   return (
-    <div style={{ paddingBottom: editMode && isDraftDirty ? '5rem' : undefined }}>
-      <div className="page-header">
-        <div>
-          <h1>Planejamento mensal</h1>
+    <div className="planning-page">
+      <header className="planning-topbar">
+        <div className="planning-topbar-title">
+          <h1>{editMode ? 'Editar Planejamento' : 'Planejamento Mensal'}</h1>
           <p>
-            Defina quanto pretende receber e gastar em{' '}
-            <strong>{formatMonthTitle(year, month)}</strong>.
+            {editMode
+              ? 'Defina as receitas e distribua o orçamento entre categorias e subcategorias.'
+              : 'Organize sua receita e despesas para o mês.'}
             {!canWrite ? ' Você tem acesso somente leitura.' : null}
           </p>
         </div>
-        <div className="page-actions">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Button variant="secondary" aria-label="Mês anterior" onClick={() => navigateMonth(-1)}>
-              <ChevronLeft size={16} />
-            </Button>
-            <span style={{ fontWeight: 600, minWidth: '10rem', textAlign: 'center' }}>
-              {formatMonthTitle(year, month)}
-            </span>
-            <Button variant="secondary" aria-label="Próximo mês" onClick={() => navigateMonth(1)}>
-              <ChevronRight size={16} />
-            </Button>
-          </div>
+
+        <div className="planning-month-nav" aria-label="Navegação do mês">
+          <Button variant="secondary" aria-label="Mês anterior" onClick={() => navigateMonth(-1)}>
+            <ChevronLeft size={16} />
+          </Button>
+          <span className="planning-month-label">
+            <CalendarRange size={16} aria-hidden="true" />
+            {formatMonthTitle(year, month)}
+          </span>
+          <Button variant="secondary" aria-label="Próximo mês" onClick={() => navigateMonth(1)}>
+            <ChevronRight size={16} />
+          </Button>
+        </div>
+
+        <div className="planning-topbar-actions">
+          {canWrite && editMode ? (
+            <>
+              <Button variant="secondary" onClick={cancelEdit} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button variant="secondary" onClick={handleCopyPrevious} disabled={copying || saving}>
+                <Copy size={16} /> Copiar mês anterior
+              </Button>
+              <Button onClick={() => void handleSave()} disabled={saving || !hasCategories}>
+                <Check size={16} /> {saving ? 'Salvando…' : 'Salvar planejamento'}
+              </Button>
+            </>
+          ) : null}
           {canWrite && !editMode ? (
             <>
               <Button variant="secondary" onClick={handleCopyPrevious} disabled={copying}>
                 <Copy size={16} /> Copiar mês anterior
               </Button>
               <Button onClick={startEdit} disabled={!hasCategories}>
-                <Pencil size={16} /> Editar
+                <Pencil size={16} /> Editar planejamento
               </Button>
             </>
           ) : null}
         </div>
-      </div>
+      </header>
 
       {successMessage ? (
         <Alert variant="success" style={{ marginBottom: '1rem' }}>
@@ -458,37 +554,69 @@ export default function PlanejamentoPage() {
         </Alert>
       ) : null}
 
-      <div
-        role="tablist"
-        aria-label="Seções do planejamento"
-        style={{
-          display: 'flex',
-          gap: '0.35rem',
-          marginBottom: '1.25rem',
-          borderBottom: '1px solid var(--border-default)',
-          paddingBottom: '0.35rem',
-        }}
-      >
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            onClick={() => navigateTab(item.id)}
-            style={{
-              border: 0,
-              background: tab === item.id ? 'var(--action-primary-soft)' : 'transparent',
-              color: tab === item.id ? 'var(--action-primary)' : 'var(--text-secondary)',
-              fontWeight: tab === item.id ? 600 : 500,
-              padding: '0.55rem 0.9rem',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer',
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
+      {hasCategories ? (
+        <PlanningSummaryCards
+          tab={tab}
+          year={year}
+          month={month}
+          editMode={editMode}
+          incomePlannedInCents={displayTotals.incomePlannedInCents}
+          expensePlannedInCents={displayTotals.expensePlannedInCents}
+          projectedBalanceInCents={displayTotals.projectedBalanceInCents}
+          incomeRealizedInCents={incomeRealized}
+          expenseRealizedInCents={expenseRealized}
+        />
+      ) : null}
+
+      <div className="planning-tabs-row">
+        <div className="planning-tabs" role="tablist" aria-label="Seções do planejamento">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              className={`planning-tab${tab === item.id ? ' is-active' : ''}`}
+              aria-selected={tab === item.id}
+              onClick={() => navigateTab(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {tab !== 'resumo' ? (
+          <div className="planning-view-controls" aria-label="Controles de visualização">
+            <button
+              type="button"
+              className={`planning-view-btn${showValues ? ' is-active' : ''}`}
+              onClick={() => setShowValues((value) => !value)}
+              aria-pressed={showValues}
+            >
+              {showValues ? <Eye size={16} /> : <EyeOff size={16} />}
+              Ver valores
+            </button>
+            <div className="planning-view-toggle" role="group" aria-label="Modo de lista">
+              <button
+                type="button"
+                className={`planning-view-icon${viewMode === 'list' ? ' is-active' : ''}`}
+                aria-label="Visualização em lista"
+                aria-pressed={viewMode === 'list'}
+                onClick={() => setViewMode('list')}
+              >
+                <List size={16} />
+              </button>
+              <button
+                type="button"
+                className={`planning-view-icon${viewMode === 'grid' ? ' is-active' : ''}`}
+                aria-label="Visualização em grade"
+                aria-pressed={viewMode === 'grid'}
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid size={16} />
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {!hasCategories ? (
@@ -503,120 +631,62 @@ export default function PlanejamentoPage() {
           }
         />
       ) : tab === 'resumo' ? (
-        <>
-          <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-            <div className="stat-card">
-              <div className="stat-card-label">Receitas previstas</div>
-              <div className="stat-card-value">
-                <MoneyDisplay
-                  cents={BigInt(displayTotals.incomePlannedInCents || '0')}
-                  tone="income"
-                />
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-label">Gastos previstos</div>
-              <div className="stat-card-value">
-                <MoneyDisplay
-                  cents={BigInt(displayTotals.expensePlannedInCents || '0')}
-                  tone="expense"
-                />
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-label">Saldo projetado</div>
-              <div className="stat-card-value">
-                <MoneyDisplay
-                  cents={BigInt(displayTotals.projectedBalanceInCents || '0')}
-                  tone={balanceTone}
-                />
-              </div>
-              <div className="stat-card-hint">
-                {formatCentsToBRL(displayTotals.projectedBalanceInCents)}
-              </div>
-            </div>
-          </div>
-
-          {!plan?.exists && !editMode ? (
-            <EmptyState
-              icon={<CalendarRange size={40} />}
-              title="Nenhum planejamento neste mês"
-              description={
-                canWrite
-                  ? 'Comece do zero ou copie os valores do mês anterior.'
-                  : 'Este mês ainda não possui planejamento salvo.'
-              }
-              action={
-                canWrite ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '0.75rem',
-                      flexWrap: 'wrap',
-                      justifyContent: 'center',
-                    }}
+        !plan?.exists && !editMode ? (
+          <EmptyState
+            icon={<CalendarRange size={40} />}
+            title="Nenhum planejamento neste mês"
+            description={
+              canWrite
+                ? 'Comece do zero ou copie os valores do mês anterior.'
+                : 'Este mês ainda não possui planejamento salvo.'
+            }
+            action={
+              canWrite ? (
+                <div className="planning-empty-actions">
+                  <Button onClick={startEdit}>Começar planejamento</Button>
+                  <Button variant="secondary" onClick={handleCopyPrevious} disabled={copying}>
+                    Copiar mês anterior
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          />
+        ) : (
+          <section className="panel">
+            <h2>Resumo por categoria</h2>
+            {plan?.categories.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Nenhuma categoria disponível.</p>
+            ) : (
+              <ul className="planning-resumo-list">
+                {plan?.categories.map((category) => (
+                  <li
+                    key={category.id}
+                    className="planning-resumo-item"
+                    style={{ opacity: category.isActive ? 1 : 0.65 }}
                   >
-                    <Button onClick={startEdit}>Começar planejamento</Button>
-                    <Button variant="secondary" onClick={handleCopyPrevious} disabled={copying}>
-                      Copiar mês anterior
-                    </Button>
-                  </div>
-                ) : undefined
-              }
-            />
-          ) : (
-            <section className="panel">
-              <h2>Resumo por categoria</h2>
-              {plan?.categories.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)' }}>Nenhuma categoria disponível.</p>
-              ) : (
-                <ul
-                  style={{
-                    listStyle: 'none',
-                    margin: 0,
-                    padding: 0,
-                    display: 'grid',
-                    gap: '0.65rem',
-                  }}
-                >
-                  {plan?.categories.map((category) => (
-                    <li
-                      key={category.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.75rem',
-                        opacity: category.isActive ? 1 : 0.65,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span
-                          style={{
-                            width: '0.65rem',
-                            height: '0.65rem',
-                            borderRadius: '50%',
-                            background: category.color,
-                          }}
-                        />
-                        <span style={{ fontWeight: 600 }}>{category.name}</span>
-                        {!category.isActive ? <Badge variant="warning">Arquivada</Badge> : null}
-                      </div>
-                      <MoneyDisplay
-                        cents={BigInt(
-                          editMode
-                            ? categorySubtotal(category, draft)
-                            : category.plannedAmountInCents || '0',
-                        )}
-                        tone={category.type === 'income' ? 'income' : 'expense'}
+                    <div className="planning-resumo-identity">
+                      <span
+                        className="planning-category-dot"
+                        style={{ background: category.color }}
+                        aria-hidden="true"
                       />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-        </>
+                      <span className="planning-category-name">{category.name}</span>
+                      {!category.isActive ? <Badge variant="warning">Arquivada</Badge> : null}
+                    </div>
+                    <MoneyDisplay
+                      cents={BigInt(
+                        editMode
+                          ? categorySubtotal(category, draft)
+                          : category.plannedAmountInCents || '0',
+                      )}
+                      tone={category.type === 'income' ? 'income' : 'expense'}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )
       ) : filteredCategories.length === 0 ? (
         <EmptyState
           title={tab === 'receitas' ? 'Nenhuma receita configurada' : 'Nenhuma despesa configurada'}
@@ -628,133 +698,96 @@ export default function PlanejamentoPage() {
           }
         />
       ) : (
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {filteredCategories.map((category) => {
-            const isOpen = expanded.has(category.id);
-            return (
-              <section
-                key={category.id}
-                className="panel"
-                style={{ opacity: category.isActive ? 1 : 0.65 }}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleExpand(category.id)}
-                  aria-expanded={isOpen}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    border: 0,
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    padding: 0,
-                    textAlign: 'left',
-                    color: 'inherit',
-                  }}
-                >
-                  {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                  <span
-                    style={{
-                      width: '0.75rem',
-                      height: '0.75rem',
-                      borderRadius: '50%',
-                      background: category.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ flex: 1, fontWeight: 600 }}>{category.name}</span>
-                  {!category.isActive ? <Badge variant="warning">Arquivada</Badge> : null}
-                  <MoneyDisplay
-                    cents={BigInt(
-                      editMode
-                        ? categorySubtotal(category, draft)
-                        : category.plannedAmountInCents || '0',
-                    )}
-                    tone={category.type === 'income' ? 'income' : 'expense'}
-                  />
-                </button>
+        <div className={`planning-workspace${editMode ? ' is-editing' : ''}`}>
+          <div className="planning-main-column">
+            <section
+              className={`planning-table-panel${viewMode === 'grid' ? ' is-grid' : ''}`}
+            >
+              <PlanningColumnHeader
+                labels={getPlanningColumnLabels(tab === 'receitas' ? 'income' : 'expense')}
+                showUsage={tab === 'gastos'}
+              />
+              <div className="planning-categories">
+                {filteredCategories.map((category) => {
+                  const comparisonCat = comparisonByCategory.get(category.id);
+                  const plannedInCents = editMode
+                    ? categorySubtotal(category, draft)
+                    : (comparisonCat?.plannedInCents ?? category.plannedAmountInCents ?? '0');
+                  const realizedInCents = comparisonCat?.realizedInCents ?? '0';
 
-                {isOpen ? (
-                  <ul
-                    style={{
-                      listStyle: 'none',
-                      margin: '0.85rem 0 0 2rem',
-                      padding: 0,
-                      display: 'grid',
-                      gap: '0.75rem',
-                    }}
-                  >
-                    {category.subcategories.length === 0 ? (
-                      <li style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                        Nenhuma subcategoria
-                      </li>
-                    ) : (
-                      category.subcategories.map((sub) => (
-                        <li
-                          key={sub.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '1rem',
-                            opacity: sub.isActive ? 1 : 0.65,
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>{sub.name}</span>
-                            {!sub.isActive ? <Badge variant="warning">Inativa</Badge> : null}
-                          </div>
-                          {editMode && canWrite ? (
-                            <div style={{ minWidth: '11rem' }}>
-                              <MoneyInput
-                                label={sub.name}
-                                valueInCents={draft[sub.id] ?? '0'}
-                                onChange={(value: string) =>
-                                  setDraft((prev) => ({ ...prev, [sub.id]: value }))
-                                }
-                              />
-                            </div>
-                          ) : (
-                            <MoneyDisplay
-                              cents={BigInt(sub.plannedAmountInCents || '0')}
-                              tone={category.type === 'income' ? 'income' : 'expense'}
-                            />
-                          )}
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                ) : null}
-              </section>
-            );
-          })}
+                  return (
+                    <PlanningCategorySection
+                      key={category.id}
+                      isOpen={expanded.has(category.id)}
+                      onToggle={() => toggleExpand(category.id)}
+                      editMode={editMode}
+                      canWrite={canWrite}
+                      hideValues={!showValues}
+                      onPlannedChange={(subcategoryId, value) =>
+                        setDraft((prev) => ({ ...prev, [subcategoryId]: value }))
+                      }
+                      category={{
+                        id: category.id,
+                        name: category.name,
+                        type: category.type,
+                        color: category.color,
+                        icon: category.icon,
+                        isActive: category.isActive,
+                        plannedInCents,
+                        realizedInCents,
+                        subcategories: category.subcategories.map((sub) => {
+                          const comparisonSub = comparisonBySub.get(sub.id);
+                          return {
+                            id: sub.id,
+                            name: sub.name,
+                            isActive: sub.isActive,
+                            plannedInCents: editMode
+                              ? (draft[sub.id] ?? sub.plannedAmountInCents ?? '0')
+                              : (comparisonSub?.plannedInCents ??
+                                sub.plannedAmountInCents ??
+                                '0'),
+                            realizedInCents: comparisonSub?.realizedInCents ?? '0',
+                          };
+                        }),
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+
+            <Link href="/configuracoes/categorias" className="planning-add-row">
+              + {tab === 'receitas' ? 'Adicionar fonte de receita' : 'Adicionar categoria de gasto'}
+            </Link>
+          </div>
+
+          {editMode ? (
+            <PlanningSidePanel
+              tab={tab}
+              canWrite={canWrite}
+              copying={copying}
+              incomePlannedInCents={displayTotals.incomePlannedInCents}
+              expensePlannedInCents={displayTotals.expensePlannedInCents}
+              categoryCount={tabSourceStats.categoryCount}
+              subcategoryCount={tabSourceStats.subcategoryCount}
+              positiveBalanceCount={filteredCategories.filter((category) => {
+                const comparisonCat = comparisonByCategory.get(category.id);
+                const planned = editMode
+                  ? categorySubtotal(category, draft)
+                  : (comparisonCat?.plannedInCents ?? category.plannedAmountInCents ?? '0');
+                const realized = comparisonCat?.realizedInCents ?? '0';
+                return BigInt(planned) - BigInt(realized) >= 0n;
+              }).length}
+              onCopyPrevious={handleCopyPrevious}
+            />
+          ) : null}
         </div>
       )}
 
       {editMode && isDraftDirty ? (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 'var(--sidebar-width)',
-            right: 0,
-            zIndex: 30,
-            background: 'var(--surface-elevated)',
-            borderTop: '1px solid var(--border-default)',
-            boxShadow: 'var(--shadow-md)',
-            padding: '0.85rem 1.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-          }}
-        >
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Você tem alterações não salvas
-          </span>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
+        <div className="planning-sticky-bar" role="status">
+          <span>Você tem alterações não salvas</span>
+          <div className="planning-sticky-actions">
             <Button variant="secondary" onClick={cancelEdit} disabled={saving}>
               Cancelar
             </Button>

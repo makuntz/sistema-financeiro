@@ -71,6 +71,7 @@ describe('Auth, workspaces, invitations e taxonomy protegida', () => {
   });
 
   beforeEach(async () => {
+    await prisma.ledgerEntry.deleteMany();
     await prisma.monthlyPlanItem.deleteMany();
     await prisma.monthlyPlan.deleteMany();
     await prisma.subcategory.deleteMany();

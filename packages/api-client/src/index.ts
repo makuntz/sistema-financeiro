@@ -29,6 +29,15 @@ import {
   type MonthlyPlanDto,
   type SaveMonthlyPlanRequest,
   type CopyPreviousMonthlyPlanRequest,
+  type LedgerEntryDto,
+  type CreateLedgerEntryRequest,
+  type UpdateLedgerEntryRequest,
+  type VoidLedgerEntryRequest,
+  type RestoreLedgerEntryRequest,
+  type LedgerFiltersQuery,
+  type PaginatedLedgerEntriesResponse,
+  type MonthlyLedgerSummaryDto,
+  type MonthlyBudgetComparisonDto,
 } from '@pp-planning/contracts';
 
 export class ApiClientError extends Error {
@@ -293,6 +302,72 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(input),
     });
+  }
+
+  // --- Ledger ---
+
+  async listLedgerEntries(
+    filters: Partial<LedgerFiltersQuery> = {},
+  ): Promise<PaginatedLedgerEntriesResponse> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      }
+    }
+    const query = params.toString();
+    return this.request<PaginatedLedgerEntriesResponse>(
+      `/v1/ledger/entries${query ? `?${query}` : ''}`,
+    );
+  }
+
+  async getLedgerEntry(entryId: string): Promise<LedgerEntryDto> {
+    return this.request<LedgerEntryDto>(`/v1/ledger/entries/${entryId}`);
+  }
+
+  async createLedgerEntry(input: CreateLedgerEntryRequest): Promise<LedgerEntryDto> {
+    return this.request<LedgerEntryDto>('/v1/ledger/entries', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateLedgerEntry(
+    entryId: string,
+    input: UpdateLedgerEntryRequest,
+  ): Promise<LedgerEntryDto> {
+    return this.request<LedgerEntryDto>(`/v1/ledger/entries/${entryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async voidLedgerEntry(entryId: string, input: VoidLedgerEntryRequest): Promise<LedgerEntryDto> {
+    return this.request<LedgerEntryDto>(`/v1/ledger/entries/${entryId}/void`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async restoreLedgerEntry(
+    entryId: string,
+    input: RestoreLedgerEntryRequest,
+  ): Promise<LedgerEntryDto> {
+    return this.request<LedgerEntryDto>(`/v1/ledger/entries/${entryId}/restore`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async getMonthlyLedgerSummary(year: number, month: number): Promise<MonthlyLedgerSummaryDto> {
+    return this.request<MonthlyLedgerSummaryDto>(`/v1/ledger/monthly/${year}/${month}/summary`);
+  }
+
+  async getMonthlyBudgetComparison(
+    year: number,
+    month: number,
+  ): Promise<MonthlyBudgetComparisonDto> {
+    return this.request<MonthlyBudgetComparisonDto>(`/v1/reports/monthly-budget/${year}/${month}`);
   }
 
   // --- Internal ---

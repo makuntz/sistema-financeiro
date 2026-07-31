@@ -21,6 +21,14 @@
     "./planning": {
       "types": "./dist/planning/index.d.ts",
       "import": "./dist/planning/index.js"
+    },
+    "./ledger": {
+      "types": "./dist/ledger/index.d.ts",
+      "import": "./dist/ledger/index.js"
+    },
+    "./reports": {
+      "types": "./dist/reports/index.d.ts",
+      "import": "./dist/reports/index.js"
     }
   },
   "scripts": {

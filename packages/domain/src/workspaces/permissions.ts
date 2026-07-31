@@ -22,7 +22,10 @@ export type Permission =
   | 'planning.read'
   | 'planning.write'
   | 'financial.read'
-  | 'financial.write';
+  | 'financial.write'
+  | 'ledger.read'
+  | 'ledger.write'
+  | 'reports.read';
 
 const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
   owner: [
@@ -41,6 +44,9 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
     'planning.write',
     'financial.read',
     'financial.write',
+    'ledger.read',
+    'ledger.write',
+    'reports.read',
   ],
   admin: [
     'workspace.read',
@@ -58,6 +64,9 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
     'planning.write',
     'financial.read',
     'financial.write',
+    'ledger.read',
+    'ledger.write',
+    'reports.read',
   ],
   member: [
     'workspace.read',
@@ -70,8 +79,19 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, readonly Permission[]> = {
     'planning.write',
     'financial.read',
     'financial.write',
+    'ledger.read',
+    'ledger.write',
+    'reports.read',
   ],
-  viewer: ['workspace.read', 'members.read', 'taxonomy.read', 'planning.read', 'financial.read'],
+  viewer: [
+    'workspace.read',
+    'members.read',
+    'taxonomy.read',
+    'planning.read',
+    'financial.read',
+    'ledger.read',
+    'reports.read',
+  ],
 };
 
 export function permissionsForRole(role: WorkspaceRole): readonly Permission[] {

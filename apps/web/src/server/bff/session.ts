@@ -15,10 +15,19 @@ function hashRefreshToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+/** Auth failures that mean the refresh session is dead — safe to clear cookies. */
+function isDefinitiveRefreshFailure(status: number): boolean {
+  return status === 401 || status === 403;
+}
+
 /**
  * Refresh the access token using the refresh cookie for the current request.
  * Concurrent callers that share the same refresh token coalesce into one HTTP refresh.
  * Distinct sessions never share a Promise.
+ *
+ * Cookies are cleared only on definitive auth failures (401/403) or a malformed
+ * success payload. Network errors and 5xx keep cookies so a local API restart
+ * does not force the user to log in again.
  */
 export async function refreshOnce(): Promise<RefreshResult> {
   const refreshToken = await getRefreshToken();
@@ -32,13 +41,21 @@ export async function refreshOnce(): Promise<RefreshResult> {
   if (existing) return existing;
 
   const promise = (async (): Promise<RefreshResult> => {
-    const res = await apiFetch('/v1/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-    });
+    let res: Response;
+    try {
+      res = await apiFetch('/v1/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+      });
+    } catch {
+      // API unreachable (e.g. still booting after a local restart).
+      return null;
+    }
 
     if (!res.ok) {
-      await clearAuthCookies();
+      if (isDefinitiveRefreshFailure(res.status)) {
+        await clearAuthCookies();
+      }
       return null;
     }
 

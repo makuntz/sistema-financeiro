@@ -16,7 +16,11 @@ export type AuditEventName =
   | 'WorkspaceAccessDenied'
   | 'MonthlyPlanCreated'
   | 'MonthlyPlanUpdated'
-  | 'MonthlyPlanCopiedFromPreviousMonth';
+  | 'MonthlyPlanCopiedFromPreviousMonth'
+  | 'LedgerEntryCreated'
+  | 'LedgerEntryUpdated'
+  | 'LedgerEntryVoided'
+  | 'LedgerEntryRestored';
 
 export type AuditEvent = {
   name: AuditEventName;
