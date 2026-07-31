@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiFetch } from './api';
-import { clearAuthCookies, getWorkspaceId } from './cookies';
+import { getWorkspaceId } from './cookies';
 import { validateOrigin } from './origin';
 import { getValidAccessToken, refreshOnce } from './session';
 
@@ -32,7 +32,8 @@ export async function authenticatedProxy(
 
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
-    await clearAuthCookies();
+    // refreshOnce already clears cookies on definitive auth failure.
+    // Do not clear here — transient API downtime must keep the refresh cookie.
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

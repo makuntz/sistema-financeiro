@@ -99,19 +99,24 @@ Admins gerenciam membros, mas não alteram papéis envolvendo `owner`.
 
 Três eixos distintos:
 
-| Campo                       | Significado                                                                                             |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `workspaceId`               | **Proprietário lógico** — a quem pertence o dado financeiro; isolamento e autorização                   |
-| `createdByUserId`           | **Autor** — quem criou o registro (workspace, convite, etc.); auditoria                                 |
-| `paidByMemberId` _(futuro)_ | **Quem pagou** — atribuição pessoal dentro do workspace compartilhado (ex.: “Leandro pagou este gasto”) |
+| Campo                | Significado                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `workspaceId`        | **Proprietário lógico** — a quem pertence o dado financeiro; isolamento e autorização   |
+| `createdByUserId`    | **Autor** — quem criou o registro (workspace, convite, lançamento, etc.); auditoria     |
+| `attributedMemberId` | **Quem pagou/recebeu** — membership opcional no lançamento (distinto de quem registrou) |
 
 Exemplo: uma `Transaction` tem `workspaceId` (visível a todos os membros com permissão), pode registrar `createdByUserId` (quem lançou) e, no futuro, `paidByMemberId` (quem efetivamente pagou), sem transferir ownership do dado para o usuário.
 
 ## Planning vs Ledger
 
-- **Planning**: intenção (orçamento do mês).
-- **Ledger**: fato (lançamentos reais).
-- Comparativos nascem da combinação dos dois, sem misturar conceitos nas entidades.
+- **Planning**: intenção (orçamento do mês) — `MonthlyPlan` / `MonthlyPlanItem`.
+- **Ledger**: fato (lançamentos reais) — `LedgerEntry` (UI: **Lançamentos**).
+- Comparativos ficam no módulo **Reports** (`GetMonthlyBudgetComparison`), somente leitura.
+- Competência (`competenceYear`/`competenceMonth`) define o mês do comparativo; `occurredOn` é a data do fato (DATE).
+- Exclusão de lançamento é lógica (`voidedAt`); voided não entram em totais/realizado.
+- Concorrência otimista em `LedgerEntry.version` (mesmo espírito do Planning).
+
+Ver [ADR-018](./docs/adr/ADR-018-ledger-entry-model.md) e [ADR-019](./docs/adr/ADR-019-planned-versus-realized-read-model.md).
 
 ## OCR e IA (futuro)
 
@@ -144,16 +149,17 @@ Fluxo:
 
 Detalhes: [ADR-014](./docs/adr/ADR-014-nextjs-bff-authentication.md).
 
-## Planejamento mensal (Etapa 4)
+## Planejamento mensal (Etapa 4) e Lançamentos (Etapa 5)
 
-**Planning** = intenção (orçamento do mês). **Ledger** = fatos reais (ainda não implementado). A UI não mostra “realizado” fictício.
+**Planning** = intenção (orçamento do mês). **Ledger** = fatos reais (lançamentos). A UI de planejamento mostra realizado a partir do Reports, sem permitir editar valores realizados.
 
 ### Modelo
 
 - `MonthlyPlan`: único por `(workspaceId, year, month)`; `year`/`month` inteiros (não DateTime); `version` para concorrência otimista.
 - `MonthlyPlanItem`: valor planejado **somente na subcategoria** (`plannedAmountInCents` BigInt ≥ 0); ausência = zero (armazenamento esparso).
-- Totais de categoria / receitas / gastos / saldo previsto são **calculados no backend**.
-- Receitas usam `Category.type = income` (subcategorias = fontes visuais); gastos usam `expense`. Sem entidade `IncomeSource` nesta etapa.
+- `LedgerEntry`: lançamento individual com `kind` snapshot, `amountInCents` positivo, `occurredOn` DATE, competência, atribuição opcional a membro, void lógico, `version`.
+- Totais de categoria / receitas / gastos / saldo previsto e realizado são **calculados no backend**.
+- Receitas usam `Category.type = income`; gastos usam `expense`. Sem entidade `IncomeSource` nesta etapa.
 - Taxonomia arquivada com valor histórico permanece visível (somente leitura) naquele mês.
 
 ### Dinheiro na API

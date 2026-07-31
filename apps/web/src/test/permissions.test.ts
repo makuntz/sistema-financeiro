@@ -8,6 +8,7 @@ describe('getPermissions', () => {
     expect(p.canInvite).toBe(true);
     expect(p.canWriteTaxonomy).toBe(true);
     expect(p.canWritePlanning).toBe(true);
+    expect(p.canWriteLedger).toBe(true);
     expect(p.canPromoteOwner).toBe(true);
     expect(p.canRemoveMembers).toBe(true);
     expect(p.canChangeRoles).toBe(true);
@@ -19,6 +20,7 @@ describe('getPermissions', () => {
     expect(p.canInvite).toBe(true);
     expect(p.canWriteTaxonomy).toBe(true);
     expect(p.canWritePlanning).toBe(true);
+    expect(p.canWriteLedger).toBe(true);
     expect(p.canPromoteOwner).toBe(false);
     expect(p.canRemoveMembers).toBe(true);
     expect(p.canChangeRoles).toBe(true);
@@ -30,6 +32,7 @@ describe('getPermissions', () => {
     expect(p.canInvite).toBe(false);
     expect(p.canWriteTaxonomy).toBe(true);
     expect(p.canWritePlanning).toBe(true);
+    expect(p.canWriteLedger).toBe(true);
     expect(p.canPromoteOwner).toBe(false);
   });
 
@@ -39,6 +42,7 @@ describe('getPermissions', () => {
     expect(p.canInvite).toBe(false);
     expect(p.canWriteTaxonomy).toBe(false);
     expect(p.canWritePlanning).toBe(false);
+    expect(p.canWriteLedger).toBe(false);
     expect(p.canPromoteOwner).toBe(false);
   });
 });

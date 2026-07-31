@@ -34,12 +34,12 @@ describe('formatMonthTitle', () => {
 });
 
 describe('parsePlanningSearchParams', () => {
-  it('defaults to current month and resumo tab', () => {
+  it('defaults to current month and gastos tab', () => {
     const current = getSaoPauloYearMonth();
     const parsed = parsePlanningSearchParams(new URLSearchParams());
     expect(parsed.year).toBe(current.year);
     expect(parsed.month).toBe(current.month);
-    expect(parsed.tab).toBe('resumo');
+    expect(parsed.tab).toBe('gastos');
     expect(parsed.normalized).toBe(false);
   });
 
@@ -61,7 +61,7 @@ describe('parsePlanningSearchParams', () => {
       new URLSearchParams({ ano: '2026', mes: '13', aba: 'invalid' }),
     );
     expect(parsed.month).toBe(current.month);
-    expect(parsed.tab).toBe('resumo');
+    expect(parsed.tab).toBe('gastos');
     expect(parsed.normalized).toBe(true);
   });
 });

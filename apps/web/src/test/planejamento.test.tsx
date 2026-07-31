@@ -92,6 +92,61 @@ function mockFetch(role: string) {
       } as Response;
     }
 
+    if (url.includes('/api/bff/reports/monthly-budget/2026/7')) {
+      return {
+        ok: true,
+        json: async () => ({
+          year: 2026,
+          month: 7,
+          currency: 'BRL',
+          totalPlannedIncomeInCents: '500000',
+          totalRealizedIncomeInCents: '0',
+          totalPlannedExpenseInCents: '200000',
+          totalRealizedExpenseInCents: '0',
+          projectedBalanceInCents: '300000',
+          realizedBalanceInCents: '0',
+          incomeBalanceInCents: '-500000',
+          expenseBalanceInCents: '200000',
+          categories: [
+            {
+              categoryId: 'cat-income',
+              categoryName: 'Salário',
+              kind: 'income',
+              plannedInCents: '500000',
+              realizedInCents: '0',
+              differenceInCents: '-500000',
+              subcategories: [
+                {
+                  subcategoryId: 'sub-income',
+                  subcategoryName: 'Principal',
+                  plannedInCents: '500000',
+                  realizedInCents: '0',
+                  differenceInCents: '-500000',
+                },
+              ],
+            },
+            {
+              categoryId: 'cat-expense',
+              categoryName: 'Moradia',
+              kind: 'expense',
+              plannedInCents: '200000',
+              realizedInCents: '0',
+              differenceInCents: '200000',
+              subcategories: [
+                {
+                  subcategoryId: 'sub-expense',
+                  subcategoryName: 'Aluguel',
+                  plannedInCents: '200000',
+                  realizedInCents: '0',
+                  differenceInCents: '200000',
+                },
+              ],
+            },
+          ],
+        }),
+      } as Response;
+    }
+
     return { ok: false, json: async () => ({}) } as Response;
   });
 }
@@ -115,12 +170,13 @@ describe('PlanejamentoPage', () => {
     renderPlanning();
 
     await waitFor(() => {
-      expect(screen.getByText('Planejamento mensal')).toBeInTheDocument();
+      expect(screen.getByText('Planejamento Mensal')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Receitas previstas')).toBeInTheDocument();
-    expect(screen.getByText('Gastos previstos')).toBeInTheDocument();
-    expect(screen.getByText('Saldo projetado')).toBeInTheDocument();
+    expect(screen.getAllByText('Receitas').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Gastos').length).toBeGreaterThan(0);
+    expect(screen.getByText('Saldo previsto')).toBeInTheDocument();
+    expect(screen.getByText('Período relativo')).toBeInTheDocument();
     expect(screen.getAllByText('R$ 5.000,00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('R$ 2.000,00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('R$ 3.000,00').length).toBeGreaterThan(0);
@@ -133,15 +189,20 @@ describe('PlanejamentoPage', () => {
     renderPlanning();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Editar/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Editar planejamento/i })).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole('button', { name: /Editar/i }));
+    await userEvent.click(screen.getByRole('button', { name: /Editar planejamento/i }));
+
+    expect(screen.getByText('Editar Planejamento')).toBeInTheDocument();
+    expect(screen.getByText('Resumo da edição')).toBeInTheDocument();
 
     const categoryToggle = screen.getByRole('button', { name: /Salário/i });
-    fireEvent.click(categoryToggle);
+    if (categoryToggle.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(categoryToggle);
+    }
 
-    const input = screen.getByRole('textbox');
+    const input = await screen.findByRole('textbox', { name: 'Principal' });
     await userEvent.click(input);
     await userEvent.clear(input);
     await userEvent.type(input, '6000');
@@ -161,7 +222,46 @@ describe('PlanejamentoPage', () => {
       expect(screen.getByText(/acesso somente leitura/i)).toBeInTheDocument();
     });
 
-    expect(screen.queryByRole('button', { name: /Editar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Editar planejamento/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Copiar mês anterior/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Disponível and Utilizado headers on gastos', async () => {
+    navigation.tab = 'gastos';
+    mockFetch('member');
+    renderPlanning();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Moradia/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('columnheader', { name: 'Categoria / Subcategoria' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Planejado' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Realizado' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Disponível' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Utilizado' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ver valores/i })).toBeInTheDocument();
+
+    const categoryToggle = screen.getByRole('button', { name: /Moradia/i });
+    if (categoryToggle.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(categoryToggle);
+    }
+
+    expect(await screen.findByText('Aluguel')).toBeInTheDocument();
+  });
+
+  it('shows income column headers on receitas tab', async () => {
+    navigation.tab = 'receitas';
+    mockFetch('member');
+    renderPlanning();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Salário/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('columnheader', { name: 'Fonte de receita' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Planejado' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Realizado' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Diferença' })).toBeInTheDocument();
   });
 });

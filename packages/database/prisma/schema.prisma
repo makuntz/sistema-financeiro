@@ -37,6 +37,9 @@ model User {
   auditLogs             AuditLog[]
   createdPlans          MonthlyPlan[] @relation("PlanCreatedBy")
   updatedPlans          MonthlyPlan[] @relation("PlanUpdatedBy")
+  createdLedgerEntries  LedgerEntry[] @relation("LedgerCreatedBy")
+  updatedLedgerEntries  LedgerEntry[] @relation("LedgerUpdatedBy")
+  voidedLedgerEntries   LedgerEntry[] @relation("LedgerVoidedBy")
 
   @@map("users")
 }
@@ -60,6 +63,7 @@ model Workspace {
   auditLogs       AuditLog[]
   monthlyPlans    MonthlyPlan[]
   monthlyPlanItems MonthlyPlanItem[]
+  ledgerEntries   LedgerEntry[]
 
   @@index([createdByUserId])
   @@map("workspaces")
@@ -75,9 +79,11 @@ model WorkspaceMember {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
-  user        User          @relation(fields: [userId], references: [id])
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  ledgerEntries  LedgerEntry[]  @relation("LedgerAttributedMember")
 
+  @@unique([id, workspaceId])
   @@unique([workspaceId, userId])
   @@index([userId])
   @@index([workspaceId])
@@ -180,6 +186,7 @@ model Subcategory {
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   category       Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   planItems      MonthlyPlanItem[] @relation("PlanItemSubcategory")
+  ledgerEntries  LedgerEntry[] @relation("LedgerSubcategory")
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, categoryId, normalizedName])
@@ -228,4 +235,44 @@ model MonthlyPlanItem {
   @@index([monthlyPlanId])
   @@index([subcategoryId])
   @@map("monthly_plan_items")
+}
+
+model LedgerEntry {
+  id                  String       @id @db.Uuid
+  workspaceId         String       @map("workspace_id") @db.Uuid
+  subcategoryId       String       @map("subcategory_id") @db.Uuid
+  categoryId          String       @map("category_id") @db.Uuid
+  kind                CategoryType
+  description         String
+  notes               String?
+  amountInCents       BigInt       @map("amount_in_cents")
+  occurredOn          DateTime     @map("occurred_on") @db.Date
+  competenceYear      Int          @map("competence_year")
+  competenceMonth     Int          @map("competence_month")
+  attributedMemberId  String?      @map("attributed_member_id") @db.Uuid
+  createdByUserId     String       @map("created_by_user_id") @db.Uuid
+  updatedByUserId     String       @map("updated_by_user_id") @db.Uuid
+  version             Int          @default(1)
+  voidedAt            DateTime?    @map("voided_at")
+  voidedByUserId      String?      @map("voided_by_user_id") @db.Uuid
+  voidReason          String?      @map("void_reason")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  subcategory        Subcategory     @relation("LedgerSubcategory", fields: [subcategoryId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  attributedMember   WorkspaceMember? @relation("LedgerAttributedMember", fields: [attributedMemberId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  createdBy          User            @relation("LedgerCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy          User            @relation("LedgerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  voidedBy           User?           @relation("LedgerVoidedBy", fields: [voidedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, competenceYear, competenceMonth])
+  @@index([workspaceId, occurredOn])
+  @@index([workspaceId, subcategoryId])
+  @@index([workspaceId, kind])
+  @@index([workspaceId, attributedMemberId])
+  @@index([workspaceId, voidedAt])
+  @@index([createdByUserId])
+  @@index([updatedAt])
+  @@map("ledger_entries")
 }

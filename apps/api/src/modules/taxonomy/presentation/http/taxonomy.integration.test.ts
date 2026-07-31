@@ -68,6 +68,7 @@ describe('Taxonomy Stage 3 - Categories & Subcategories', () => {
   });
 
   beforeEach(async () => {
+    await prisma.ledgerEntry.deleteMany();
     await prisma.monthlyPlanItem.deleteMany();
     await prisma.monthlyPlan.deleteMany();
     await prisma.subcategory.deleteMany();

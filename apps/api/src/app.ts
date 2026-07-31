@@ -38,6 +38,8 @@ import {
   registerTaxonomyRoutes,
 } from './modules/taxonomy/index.js';
 import { PrismaMonthlyPlanRepository, registerPlanningRoutes } from './modules/planning/index.js';
+import { PrismaLedgerEntryRepository, registerLedgerRoutes } from './modules/ledger/index.js';
+import { registerReportsRoutes } from './modules/reports/index.js';
 import { registerAuthRoutes } from './modules/identity/presentation/http/auth-routes.js';
 import { registerWorkspaceRoutes } from './modules/workspaces/presentation/http/workspace-routes.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
@@ -209,6 +211,8 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
         { name: 'Invitations', description: 'Workspace invitations' },
         { name: 'Taxonomy', description: 'Categories and taxonomy' },
         { name: 'Planning', description: 'Monthly planning' },
+        { name: 'Ledger', description: 'Financial ledger entries' },
+        { name: 'Reports', description: 'Financial reports' },
       ],
     },
   });
@@ -268,6 +272,29 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
     planStore: prismaMonthlyPlanRepo,
     taxonomyProvider: prismaMonthlyPlanRepo,
     auditLogger,
+    authenticate,
+    requireWorkspace,
+    requirePermission,
+  });
+
+  const prismaLedgerRepo = new PrismaLedgerEntryRepository(prisma);
+
+  await registerLedgerRoutes(app, {
+    ledgerRepository: prismaLedgerRepo,
+    ledgerStore: prismaLedgerRepo,
+    ledgerEnrichment: prismaLedgerRepo,
+    subcategoryLookup: prismaLedgerRepo,
+    memberLookup: prismaLedgerRepo,
+    auditLogger,
+    authenticate,
+    requireWorkspace,
+    requirePermission,
+  });
+
+  await registerReportsRoutes(app, {
+    planningPort: prismaLedgerRepo,
+    realizedPort: prismaLedgerRepo,
+    taxonomyPort: prismaLedgerRepo,
     authenticate,
     requireWorkspace,
     requirePermission,

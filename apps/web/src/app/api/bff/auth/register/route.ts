@@ -14,7 +14,9 @@ type AuthTokensPayload = {
   workspace?: { id?: string };
 };
 
-function extractTokens(data: AuthTokensPayload): { accessToken: string; refreshToken: string } | null {
+function extractTokens(
+  data: AuthTokensPayload,
+): { accessToken: string; refreshToken: string } | null {
   const accessToken = data.tokens?.accessToken ?? data.accessToken;
   const refreshToken = data.tokens?.refreshToken ?? data.refreshToken;
   if (!accessToken || !refreshToken) return null;

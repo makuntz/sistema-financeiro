@@ -94,6 +94,7 @@ describe('Planning - Monthly Plan', () => {
   });
 
   beforeEach(async () => {
+    await prisma.ledgerEntry.deleteMany();
     await prisma.monthlyPlanItem.deleteMany();
     await prisma.monthlyPlan.deleteMany();
     await prisma.subcategory.deleteMany();

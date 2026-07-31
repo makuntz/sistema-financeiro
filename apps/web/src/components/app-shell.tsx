@@ -1,16 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   CalendarRange,
   Receipt,
-  ArrowDownCircle,
   ArrowUpCircle,
+  ShoppingCart,
   ArrowLeftRight,
-  Layers,
+  CreditCard,
   BarChart3,
   Target,
   Settings,
@@ -18,12 +15,15 @@ import {
   Menu,
   X,
   ChevronDown,
-  Plus,
+  ChevronRight,
   Moon,
   Sun,
   Users,
   Tags,
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from './theme-provider';
 import { useUnsavedChanges } from './unsaved-changes';
 
@@ -31,7 +31,7 @@ type User = { id: string; name: string; email: string };
 type Workspace = { id: string; name: string; role: string };
 
 type NavItem =
-  | { type: 'link'; href: string; label: string; icon: typeof LayoutDashboard }
+  | { type: 'link'; href: string; label: string; icon: typeof LayoutDashboard; match?: (path: string) => boolean }
   | { type: 'soon'; label: string; icon: typeof LayoutDashboard }
   | {
       type: 'group';
@@ -43,11 +43,17 @@ type NavItem =
 const NAV_ITEMS: NavItem[] = [
   { type: 'link', href: '/inicio', label: 'Resumo', icon: LayoutDashboard },
   { type: 'link', href: '/planejamento', label: 'Planejamento', icon: CalendarRange },
-  { type: 'soon', label: 'Lançamentos', icon: Receipt },
-  { type: 'soon', label: 'Receitas', icon: ArrowUpCircle },
-  { type: 'soon', label: 'Gastos', icon: ArrowDownCircle },
+  {
+    type: 'link',
+    href: '/lancamentos',
+    label: 'Lançamentos',
+    icon: Receipt,
+    match: (path) => path === '/lancamentos' || path.startsWith('/lancamentos/'),
+  },
+  { type: 'link', href: '/planejamento?aba=receitas', label: 'Receitas', icon: ArrowUpCircle },
+  { type: 'link', href: '/planejamento?aba=gastos', label: 'Gastos', icon: ShoppingCart },
   { type: 'soon', label: 'Transferências', icon: ArrowLeftRight },
-  { type: 'soon', label: 'Parcelas', icon: Layers },
+  { type: 'soon', label: 'Parcelas', icon: CreditCard },
   { type: 'soon', label: 'Relatórios', icon: BarChart3 },
   { type: 'soon', label: 'Metas', icon: Target },
   {
@@ -70,6 +76,18 @@ function initials(name: string) {
     .join('');
 }
 
+function isNavActive(pathname: string, item: Extract<NavItem, { type: 'link' }>, search: string) {
+  if (item.match) return item.match(pathname);
+  if (item.href.includes('?')) {
+    const [path, query] = item.href.split('?');
+    if (pathname !== path) return false;
+    const wanted = new URLSearchParams(query).get('aba');
+    const current = new URLSearchParams(search).get('aba');
+    return wanted === current || (wanted === 'resumo' && !current);
+  }
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -79,12 +97,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(pathname.startsWith('/configuracoes'));
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     setSettingsOpen(pathname.startsWith('/configuracoes'));
     setSidebarOpen(false);
+    setSearch(typeof window !== 'undefined' ? window.location.search : '');
   }, [pathname]);
 
   useEffect(() => {
@@ -126,16 +145,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
-  function handleSelectWorkspace(ws: Workspace) {
-    confirmIfDirty(async () => {
-      await fetch('/api/bff/workspaces/select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceId: ws.id }),
-      });
-      setCurrentWorkspace(ws);
-      setWsDropdownOpen(false);
-      router.refresh();
+  function navigate(href: string) {
+    confirmIfDirty(() => {
+      router.push(href);
     });
   }
 
@@ -172,46 +184,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="workspace-block">
-          <button
-            type="button"
-            className="workspace-trigger"
-            onClick={() => setWsDropdownOpen((open) => !open)}
-            aria-expanded={wsDropdownOpen}
-          >
-            <span>
-              <span className="workspace-label">Planejamento</span>
-              <span className="workspace-name">{currentWorkspace?.name ?? 'Selecionar...'}</span>
-            </span>
-            <ChevronDown size={16} />
-          </button>
-
-          {wsDropdownOpen ? (
-            <div className="workspace-menu" role="menu">
-              {workspaces.map((ws) => (
-                <button
-                  key={ws.id}
-                  type="button"
-                  role="menuitem"
-                  className={ws.id === currentWorkspace?.id ? 'is-active' : undefined}
-                  onClick={() => handleSelectWorkspace(ws)}
-                >
-                  {ws.name}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="workspace-create"
-                onClick={() => {
-                  setWsDropdownOpen(false);
-                  router.push('/inicio');
+        {currentWorkspace ? (
+          <div className="workspace-chip" title={currentWorkspace.name}>
+            <span className="workspace-chip-label">Planejamento</span>
+            <strong>{currentWorkspace.name}</strong>
+            {workspaces.length > 1 ? (
+              <select
+                aria-label="Trocar planejamento"
+                className="workspace-select"
+                value={currentWorkspace.id}
+                onChange={(event) => {
+                  const next = workspaces.find((ws) => ws.id === event.target.value);
+                  if (!next) return;
+                  confirmIfDirty(async () => {
+                    await fetch('/api/bff/workspaces/select', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ workspaceId: next.id }),
+                    });
+                    setCurrentWorkspace(next);
+                    router.refresh();
+                  });
                 }}
               >
-                <Plus size={14} /> Criar planejamento
-              </button>
-            </div>
-          ) : null}
-        </div>
+                {workspaces.map((ws) => (
+                  <option key={ws.id} value={ws.id}>
+                    {ws.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+        ) : null}
 
         <nav className="sidebar-nav" aria-label="Principal">
           {NAV_ITEMS.map((item) => {
@@ -253,6 +257,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             key={child.href}
                             href={child.href}
                             className={`nav-item nav-subitem ${active ? 'is-active' : ''}`}
+                            onClick={(event) => {
+                              if (!isDirty) return;
+                              event.preventDefault();
+                              navigate(child.href);
+                            }}
                           >
                             <child.icon size={16} aria-hidden />
                             <span>{child.label}</span>
@@ -264,7 +273,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             }
 
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = isNavActive(pathname, item, search);
             return (
               <Link
                 key={item.href}
@@ -273,9 +282,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={(event) => {
                   if (!isDirty) return;
                   event.preventDefault();
-                  confirmIfDirty(() => {
-                    router.push(item.href);
-                  });
+                  navigate(item.href);
                 }}
               >
                 <item.icon size={18} aria-hidden />
@@ -307,6 +314,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button type="button" className="logout-btn" onClick={handleLogout} aria-label="Sair">
               <LogOut size={16} />
             </button>
+            <ChevronRight size={16} className="user-chevron" aria-hidden />
           </div>
         </div>
       </aside>
