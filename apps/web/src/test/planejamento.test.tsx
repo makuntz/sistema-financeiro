@@ -198,9 +198,11 @@ describe('PlanejamentoPage', () => {
     expect(screen.getByText('Resumo da edição')).toBeInTheDocument();
 
     const categoryToggle = screen.getByRole('button', { name: /Salário/i });
-    fireEvent.click(categoryToggle);
+    if (categoryToggle.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(categoryToggle);
+    }
 
-    const input = screen.getByRole('textbox');
+    const input = await screen.findByRole('textbox', { name: 'Principal' });
     await userEvent.click(input);
     await userEvent.clear(input);
     await userEvent.type(input, '6000');
@@ -240,8 +242,12 @@ describe('PlanejamentoPage', () => {
     expect(screen.getByRole('columnheader', { name: 'Utilizado' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ver valores/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Moradia/i }));
-    expect(screen.getByText('Aluguel')).toBeInTheDocument();
+    const categoryToggle = screen.getByRole('button', { name: /Moradia/i });
+    if (categoryToggle.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(categoryToggle);
+    }
+
+    expect(await screen.findByText('Aluguel')).toBeInTheDocument();
   });
 
   it('shows income column headers on receitas tab', async () => {
