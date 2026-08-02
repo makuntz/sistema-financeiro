@@ -6,3 +6,4 @@ export * from './workspaces/index.js';
 export * from './planning/index.js';
 export * from './ledger/index.js';
 export * from './reports/index.js';
+export * from './receipts/index.js';

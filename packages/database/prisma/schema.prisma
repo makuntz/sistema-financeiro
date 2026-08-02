@@ -19,6 +19,29 @@ enum WorkspaceRole {
   viewer
 }
 
+enum ReceiptCaptureStatus {
+  draft
+  uploaded
+  processing
+  review
+  confirmed
+  failed
+  canceled
+}
+
+enum ReceiptProcessingJobStatus {
+  pending
+  processing
+  completed
+  failed
+  retryScheduled
+}
+
+enum LedgerEntryOrigin {
+  manual
+  receipt
+}
+
 model User {
   id               String   @id @db.Uuid
   name             String
@@ -40,6 +63,8 @@ model User {
   createdLedgerEntries  LedgerEntry[] @relation("LedgerCreatedBy")
   updatedLedgerEntries  LedgerEntry[] @relation("LedgerUpdatedBy")
   voidedLedgerEntries   LedgerEntry[] @relation("LedgerVoidedBy")
+  createdReceiptCaptures ReceiptCapture[] @relation("ReceiptCaptureCreatedBy")
+  confirmedReceiptCaptures ReceiptCapture[] @relation("ReceiptCaptureConfirmedBy")
 
   @@map("users")
 }
@@ -64,6 +89,10 @@ model Workspace {
   monthlyPlans    MonthlyPlan[]
   monthlyPlanItems MonthlyPlanItem[]
   ledgerEntries   LedgerEntry[]
+  receiptCaptures ReceiptCapture[]
+  receiptImages   ReceiptImage[]
+  receiptItems    ReceiptItem[]
+  receiptJobs     ReceiptProcessingJob[]
 
   @@index([createdByUserId])
   @@map("workspaces")
@@ -166,6 +195,7 @@ model Category {
 
   workspace      Workspace    @relation(fields: [workspaceId], references: [id])
   subcategories  Subcategory[]
+  receiptCaptures ReceiptCapture[] @relation("ReceiptCaptureDefaultCategory")
 
   @@unique([workspaceId, type, normalizedName])
   @@index([workspaceId, isActive])
@@ -187,6 +217,7 @@ model Subcategory {
   category       Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   planItems      MonthlyPlanItem[] @relation("PlanItemSubcategory")
   ledgerEntries  LedgerEntry[] @relation("LedgerSubcategory")
+  receiptItems   ReceiptItem[] @relation("ReceiptItemSubcategory")
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, categoryId, normalizedName])
@@ -238,33 +269,36 @@ model MonthlyPlanItem {
 }
 
 model LedgerEntry {
-  id                  String       @id @db.Uuid
-  workspaceId         String       @map("workspace_id") @db.Uuid
-  subcategoryId       String       @map("subcategory_id") @db.Uuid
-  categoryId          String       @map("category_id") @db.Uuid
+  id                  String            @id @db.Uuid
+  workspaceId         String            @map("workspace_id") @db.Uuid
+  subcategoryId       String            @map("subcategory_id") @db.Uuid
+  categoryId          String            @map("category_id") @db.Uuid
   kind                CategoryType
   description         String
   notes               String?
-  amountInCents       BigInt       @map("amount_in_cents")
-  occurredOn          DateTime     @map("occurred_on") @db.Date
-  competenceYear      Int          @map("competence_year")
-  competenceMonth     Int          @map("competence_month")
-  attributedMemberId  String?      @map("attributed_member_id") @db.Uuid
-  createdByUserId     String       @map("created_by_user_id") @db.Uuid
-  updatedByUserId     String       @map("updated_by_user_id") @db.Uuid
-  version             Int          @default(1)
-  voidedAt            DateTime?    @map("voided_at")
-  voidedByUserId      String?      @map("voided_by_user_id") @db.Uuid
-  voidReason          String?      @map("void_reason")
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
+  amountInCents       BigInt            @map("amount_in_cents")
+  occurredOn          DateTime          @map("occurred_on") @db.Date
+  competenceYear      Int               @map("competence_year")
+  competenceMonth     Int               @map("competence_month")
+  attributedMemberId  String?           @map("attributed_member_id") @db.Uuid
+  createdByUserId     String            @map("created_by_user_id") @db.Uuid
+  updatedByUserId     String            @map("updated_by_user_id") @db.Uuid
+  version             Int               @default(1)
+  voidedAt            DateTime?         @map("voided_at")
+  voidedByUserId      String?           @map("voided_by_user_id") @db.Uuid
+  voidReason          String?           @map("void_reason")
+  origin              LedgerEntryOrigin @default(manual)
+  receiptCaptureId    String?           @map("receipt_capture_id") @db.Uuid
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
 
-  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
-  subcategory        Subcategory     @relation("LedgerSubcategory", fields: [subcategoryId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  subcategory        Subcategory      @relation("LedgerSubcategory", fields: [subcategoryId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
   attributedMember   WorkspaceMember? @relation("LedgerAttributedMember", fields: [attributedMemberId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
-  createdBy          User            @relation("LedgerCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  updatedBy          User            @relation("LedgerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
-  voidedBy           User?           @relation("LedgerVoidedBy", fields: [voidedByUserId], references: [id], onDelete: Restrict)
+  createdBy          User             @relation("LedgerCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  updatedBy          User             @relation("LedgerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict)
+  voidedBy           User?            @relation("LedgerVoidedBy", fields: [voidedByUserId], references: [id], onDelete: Restrict)
+  receiptCapture     ReceiptCapture?  @relation(fields: [receiptCaptureId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
 
   @@index([workspaceId, competenceYear, competenceMonth])
   @@index([workspaceId, occurredOn])
@@ -272,7 +306,125 @@ model LedgerEntry {
   @@index([workspaceId, kind])
   @@index([workspaceId, attributedMemberId])
   @@index([workspaceId, voidedAt])
+  @@index([workspaceId, receiptCaptureId])
   @@index([createdByUserId])
   @@index([updatedAt])
   @@map("ledger_entries")
+}
+
+model ReceiptCapture {
+  id                     String               @id @db.Uuid
+  workspaceId            String               @map("workspace_id") @db.Uuid
+  createdByUserId        String               @map("created_by_user_id") @db.Uuid
+  status                 ReceiptCaptureStatus @default(draft)
+  merchantName           String?              @map("merchant_name")
+  purchaseDate           DateTime?            @map("purchase_date") @db.Date
+  totalAmountInCents     BigInt?              @map("total_amount_in_cents")
+  defaultCategoryId      String?              @map("default_category_id") @db.Uuid
+  extractionProvider     String               @default("fake") @map("extraction_provider")
+  extractionVersion      String?              @map("extraction_version")
+  fakeScenario           String?              @map("fake_scenario")
+  processingStartedAt    DateTime?            @map("processing_started_at")
+  processingCompletedAt  DateTime?            @map("processing_completed_at")
+  confirmedAt            DateTime?            @map("confirmed_at")
+  confirmedByUserId      String?              @map("confirmed_by_user_id") @db.Uuid
+  failureCode            String?              @map("failure_code")
+  failureMessage         String?              @map("failure_message")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+
+  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  createdBy     User                   @relation("ReceiptCaptureCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  confirmedBy   User?                  @relation("ReceiptCaptureConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: Restrict)
+  defaultCategory Category?            @relation("ReceiptCaptureDefaultCategory", fields: [defaultCategoryId], references: [id], onDelete: Restrict)
+  images        ReceiptImage[]
+  items         ReceiptItem[]
+  jobs          ReceiptProcessingJob[]
+  ledgerEntries LedgerEntry[]
+
+  @@unique([id, workspaceId])
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, createdAt])
+  @@index([createdByUserId])
+  @@map("receipt_captures")
+}
+
+model ReceiptImage {
+  id                 String    @id @db.Uuid
+  workspaceId        String    @map("workspace_id") @db.Uuid
+  receiptCaptureId   String    @map("receipt_capture_id") @db.Uuid
+  storageKey         String    @map("storage_key")
+  position           Int
+  mimeType           String    @map("mime_type")
+  sizeInBytes        Int       @map("size_in_bytes")
+  width              Int?
+  height             Int?
+  uploadCompletedAt  DateTime? @map("upload_completed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  capture   ReceiptCapture @relation(fields: [receiptCaptureId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+
+  @@unique([receiptCaptureId, position])
+  @@index([receiptCaptureId])
+  @@index([receiptCaptureId, position])
+  @@index([workspaceId])
+  @@map("receipt_images")
+}
+
+model ReceiptItem {
+  id                     String   @id @db.Uuid
+  workspaceId            String   @map("workspace_id") @db.Uuid
+  receiptCaptureId       String   @map("receipt_capture_id") @db.Uuid
+  position               Int
+  rawDescription         String   @map("raw_description")
+  normalizedDescription  String?  @map("normalized_description")
+  quantity               String?
+  unitOfMeasure          String?  @map("unit_of_measure")
+  unitPriceInCents       BigInt?  @map("unit_price_in_cents")
+  lineTotalInCents       BigInt?  @map("line_total_in_cents")
+  selectedSubcategoryId  String?  @map("selected_subcategory_id") @db.Uuid
+  isIgnored              Boolean  @default(false) @map("is_ignored")
+  needsReview            Boolean  @default(false) @map("needs_review")
+  warnings               Json     @default("[]")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  capture     ReceiptCapture @relation(fields: [receiptCaptureId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  subcategory Subcategory?   @relation("ReceiptItemSubcategory", fields: [selectedSubcategoryId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+
+  @@unique([receiptCaptureId, position])
+  @@index([receiptCaptureId])
+  @@index([selectedSubcategoryId])
+  @@index([receiptCaptureId, position])
+  @@index([workspaceId])
+  @@map("receipt_items")
+}
+
+model ReceiptProcessingJob {
+  id               String                     @id @db.Uuid
+  workspaceId      String                     @map("workspace_id") @db.Uuid
+  receiptCaptureId String                     @map("receipt_capture_id") @db.Uuid
+  status           ReceiptProcessingJobStatus @default(pending)
+  attempts         Int                        @default(0)
+  provider         String
+  startedAt        DateTime?                  @map("started_at")
+  completedAt      DateTime?                  @map("completed_at")
+  nextRetryAt      DateTime?                  @map("next_retry_at")
+  lockedAt         DateTime?                  @map("locked_at")
+  lockedBy         String?                    @map("locked_by")
+  errorCode        String?                    @map("error_code")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  updatedAt        DateTime                   @updatedAt @map("updated_at")
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  capture   ReceiptCapture @relation(fields: [receiptCaptureId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+
+  @@index([status, nextRetryAt])
+  @@index([receiptCaptureId])
+  @@index([lockedAt])
+  @@index([workspaceId])
+  @@map("receipt_processing_jobs")
 }

@@ -40,6 +40,17 @@ import {
 import { PrismaMonthlyPlanRepository, registerPlanningRoutes } from './modules/planning/index.js';
 import { PrismaLedgerEntryRepository, registerLedgerRoutes } from './modules/ledger/index.js';
 import { registerReportsRoutes } from './modules/reports/index.js';
+import {
+  PrismaReceiptCaptureRepository,
+  PrismaReceiptImageRepository,
+  PrismaReceiptItemRepository,
+  PrismaReceiptProcessingJobRepository,
+  PrismaReceiptConfirmationStore,
+  PrismaReceiptSubcategoryLookup,
+  PrismaReceiptEnrichment,
+  registerReceiptRoutes,
+} from './modules/receipts/index.js';
+import { createFileStorage } from './infrastructure/storage/s3-file-storage.js';
 import { registerAuthRoutes } from './modules/identity/presentation/http/auth-routes.js';
 import { registerWorkspaceRoutes } from './modules/workspaces/presentation/http/workspace-routes.js';
 import { Argon2PasswordHasher } from './infrastructure/security/argon2-password-hasher.js';
@@ -212,6 +223,7 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
         { name: 'Taxonomy', description: 'Categories and taxonomy' },
         { name: 'Planning', description: 'Monthly planning' },
         { name: 'Ledger', description: 'Financial ledger entries' },
+        { name: 'Receipts', description: 'Receipt capture and processing' },
         { name: 'Reports', description: 'Financial reports' },
       ],
     },
@@ -295,6 +307,31 @@ export async function buildApp(deps: AppDependencies): Promise<BuiltApp> {
     planningPort: prismaLedgerRepo,
     realizedPort: prismaLedgerRepo,
     taxonomyPort: prismaLedgerRepo,
+    authenticate,
+    requireWorkspace,
+    requirePermission,
+  });
+
+  const fileStorage = createFileStorage(deps.env);
+  const prismaReceiptCaptureRepo = new PrismaReceiptCaptureRepository(prisma);
+  const prismaReceiptItemRepo = new PrismaReceiptItemRepository(prisma);
+  const prismaReceiptImageRepo = new PrismaReceiptImageRepository(prisma);
+  const prismaReceiptJobRepo = new PrismaReceiptProcessingJobRepository(prisma);
+  const prismaReceiptConfirmationStore = new PrismaReceiptConfirmationStore(prisma);
+  const prismaReceiptSubcategoryLookup = new PrismaReceiptSubcategoryLookup(prisma);
+  const prismaReceiptEnrichment = new PrismaReceiptEnrichment(prisma);
+
+  await registerReceiptRoutes(app, {
+    env: deps.env,
+    fileStorage,
+    captureRepository: prismaReceiptCaptureRepo,
+    imageRepository: prismaReceiptImageRepo,
+    itemRepository: prismaReceiptItemRepo,
+    jobRepository: prismaReceiptJobRepo,
+    confirmationStore: prismaReceiptConfirmationStore,
+    subcategoryLookup: prismaReceiptSubcategoryLookup,
+    enrichment: prismaReceiptEnrichment,
+    auditLogger,
     authenticate,
     requireWorkspace,
     requirePermission,

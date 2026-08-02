@@ -20,14 +20,26 @@ export type AuditEventName =
   | 'LedgerEntryCreated'
   | 'LedgerEntryUpdated'
   | 'LedgerEntryVoided'
-  | 'LedgerEntryRestored';
+  | 'LedgerEntryRestored'
+  | 'ReceiptCaptureCreated'
+  | 'ReceiptImageUploadRequested'
+  | 'ReceiptImageUploaded'
+  | 'ReceiptProcessingStarted'
+  | 'ReceiptProcessingCompleted'
+  | 'ReceiptProcessingFailed'
+  | 'ReceiptCaptureUpdated'
+  | 'ReceiptItemUpdated'
+  | 'ReceiptItemsBulkAssigned'
+  | 'ReceiptItemsBulkIgnored'
+  | 'ReceiptCaptureConfirmed'
+  | 'LedgerEntriesCreatedFromReceipt';
 
 export type AuditEvent = {
   name: AuditEventName;
   actorUserId?: string;
   workspaceId?: string;
   occurredAt: Date;
-  payload: Record<string, string | number | boolean | null>;
+  payload: Record<string, string | number | boolean | null | string[]>;
 };
 
 export interface AuditLogger {

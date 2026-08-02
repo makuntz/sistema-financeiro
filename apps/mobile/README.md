@@ -1,14 +1,48 @@
-# @pp-planning/mobile
+# PP Planning Mobile
 
-Aplicativo mobile (Expo + Expo Router).
+App Expo (Etapa 6) para escaneamento de notas, classificação de itens e lançamentos manuais.
 
-Fundação para Android/iOS, com tela de **diagnóstico** e preparação para autenticação e câmera futuras.
+## Pré-requisitos
 
-## Preparação (api-client)
+- Node 20+
+- pnpm 9+
+- API rodando (padrão `:3333`)
+- Android Studio / emulador ou dispositivo físico
 
-Em `src/lib/api.ts`, o `createApiClient` aceita `getAccessToken` e `getWorkspaceId`. Na etapa de auth:
+## Configuração
 
-- persistir tokens após login/register (SecureStore);
-- guardar workspace ativo e repassar via `getWorkspaceId` para enviar `X-Workspace-Id`.
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
 
-A tela de diagnóstico atual só chama `/health`; não expõe workspace — isso será adicionado com a UI de sessão.
+`EXPO_PUBLIC_API_URL` é obrigatória. Para emulador Android use `http://10.0.2.2:3333`; em dispositivo físico use o IP da máquina na rede local.
+
+## Rodar no Android
+
+Na raiz do monorepo:
+
+```bash
+pnpm install
+pnpm dev:api          # terminal 1 — API
+pnpm --filter @pp-planning/mobile android
+```
+
+Ou dentro de `apps/mobile`:
+
+```bash
+pnpm android
+```
+
+## Testes
+
+```bash
+pnpm --filter @pp-planning/mobile test
+pnpm --filter @pp-planning/mobile typecheck
+```
+
+## Fluxo principal
+
+1. Login / cadastro com refresh token no SecureStore
+2. **Lançar** → Escanear nota → upload presigned → processamento → conferência → itens → resumo → confirmar
+3. Lançamento manual via **Despesa/Receita manual**
+4. **Histórico** de capturas e **Mais** (workspace, tema, logout)

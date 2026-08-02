@@ -1,12 +1,12 @@
 import { Text, StyleSheet } from 'react-native';
-import { semanticTokens } from '@pp-planning/design-tokens';
+import { useSemanticTokens } from './theme';
 
 export type MoneyDisplayProps = {
-  cents: number | bigint;
+  cents: number | bigint | string;
   tone?: 'default' | 'income' | 'expense';
 };
 
-function formatBrl(cents: number | bigint): string {
+function formatBrl(cents: number | bigint | string): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -14,12 +14,13 @@ function formatBrl(cents: number | bigint): string {
 }
 
 export function MoneyDisplay({ cents, tone = 'default' }: MoneyDisplayProps) {
+  const tokens = useSemanticTokens();
   const color =
     tone === 'income'
-      ? semanticTokens.financial.income
+      ? tokens.financial.income
       : tone === 'expense'
-        ? semanticTokens.financial.expense
-        : semanticTokens.financial.balance;
+        ? tokens.financial.expense
+        : tokens.financial.balance;
 
   return <Text style={[styles.text, { color }]}>{formatBrl(cents)}</Text>;
 }

@@ -20,6 +20,13 @@ const envSchema = z
     S3_BUCKET: z.string().default('pp-planning'),
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
+    HOST: z.string().default('0.0.0.0'),
+    RECEIPT_EXTRACTOR_PROVIDER: z.enum(['fake']).default('fake'),
+    RECEIPT_PROCESSING_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+    RECEIPT_PROCESSING_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(60),
+    RECEIPT_IMAGE_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(10_485_760),
+    RECEIPT_IMAGE_MAX_COUNT: z.coerce.number().int().positive().max(10).default(3),
+    RECEIPT_ALLOW_FAKE_IN_PRODUCTION: z.coerce.boolean().default(false),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === 'production' && value.JWT_SECRET.length < 32) {
@@ -35,6 +42,19 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['JWT_SECRET'],
         message: 'JWT_SECRET de desenvolvimento não pode ser usado em produção',
+      });
+    }
+
+    if (
+      value.NODE_ENV === 'production' &&
+      value.RECEIPT_EXTRACTOR_PROVIDER === 'fake' &&
+      !value.RECEIPT_ALLOW_FAKE_IN_PRODUCTION
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['RECEIPT_EXTRACTOR_PROVIDER'],
+        message:
+          'Em produção, RECEIPT_EXTRACTOR_PROVIDER=fake exige RECEIPT_ALLOW_FAKE_IN_PRODUCTION=true',
       });
     }
   });

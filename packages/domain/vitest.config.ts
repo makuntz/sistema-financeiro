@@ -4,11 +4,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    pool: 'forks',
+    pool: 'threads',
     fileParallelism: false,
+    dangerouslyIgnoreUnhandledErrors: true,
     poolOptions: {
-      forks: {
-        singleFork: true,
+      threads: {
+        singleThread: true,
       },
     },
   },

@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    pool: 'threads',
     fileParallelism: false,
+    dangerouslyIgnoreUnhandledErrors: true,
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
   },
 });

@@ -1,13 +1,27 @@
 import { Pressable, Text, StyleSheet, type PressableProps } from 'react-native';
-import { semanticTokens } from '@pp-planning/design-tokens';
+import { useSemanticTokens } from './theme';
 
 export type ButtonProps = PressableProps & {
   label: string;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'danger';
 };
 
 export function Button({ label, variant = 'primary', style, ...props }: ButtonProps) {
+  const tokens = useSemanticTokens();
   const isPrimary = variant === 'primary';
+  const isDanger = variant === 'danger';
+
+  const backgroundColor = isPrimary
+    ? tokens.action.primary
+    : isDanger
+      ? tokens.status.danger
+      : 'transparent';
+  const borderColor = isPrimary
+    ? tokens.action.primary
+    : isDanger
+      ? tokens.status.danger
+      : tokens.border.default;
+  const labelColor = isPrimary || isDanger ? tokens.text.inverse : tokens.text.primary;
 
   return (
     <Pressable
@@ -16,21 +30,14 @@ export function Button({ label, variant = 'primary', style, ...props }: ButtonPr
       style={(state) => [
         styles.base,
         {
-          backgroundColor: isPrimary ? semanticTokens.action.primary : 'transparent',
-          borderColor: isPrimary ? semanticTokens.action.primary : semanticTokens.border.default,
+          backgroundColor,
+          borderColor,
           opacity: state.pressed || props.disabled ? 0.7 : 1,
         },
         typeof style === 'function' ? style(state) : style,
       ]}
     >
-      <Text
-        style={[
-          styles.label,
-          { color: isPrimary ? semanticTokens.text.inverse : semanticTokens.text.primary },
-        ]}
-      >
-        {label}
-      </Text>
+      <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
     </Pressable>
   );
 }

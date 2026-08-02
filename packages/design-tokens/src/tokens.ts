@@ -60,7 +60,7 @@ export const primitiveTokens = {
   },
 } as const;
 
-export const semanticTokens = {
+export const lightSemanticTokens = {
   background: {
     default: primitiveTokens.color.slate50,
     subtle: primitiveTokens.color.slate100,
@@ -106,5 +106,98 @@ export const semanticTokens = {
   },
 } as const;
 
+export const darkSemanticTokens = {
+  background: {
+    default: primitiveTokens.color.slate950,
+    subtle: primitiveTokens.color.slate900,
+    inverse: primitiveTokens.color.slate100,
+  },
+  surface: {
+    default: primitiveTokens.color.slate900,
+    elevated: primitiveTokens.color.slate800,
+    muted: primitiveTokens.color.slate800,
+  },
+  text: {
+    primary: primitiveTokens.color.slate50,
+    secondary: primitiveTokens.color.slate400,
+    inverse: primitiveTokens.color.slate900,
+  },
+  border: {
+    default: primitiveTokens.color.slate700,
+    strong: primitiveTokens.color.slate600,
+  },
+  action: {
+    primary: primitiveTokens.color.blue500,
+    primaryHover: primitiveTokens.color.blue600,
+  },
+  financial: {
+    income: primitiveTokens.color.emerald500,
+    expense: primitiveTokens.color.rose500,
+    balance: primitiveTokens.color.blue500,
+    warning: primitiveTokens.color.amber500,
+    positive: primitiveTokens.color.emerald500,
+    negative: primitiveTokens.color.rose500,
+  },
+  status: {
+    success: primitiveTokens.color.emerald500,
+    warning: primitiveTokens.color.amber500,
+    danger: primitiveTokens.color.rose500,
+  },
+  nav: {
+    background: primitiveTokens.color.slate950,
+    backgroundHover: 'rgba(59, 130, 246, 0.24)',
+    active: primitiveTokens.color.blue500,
+    text: 'rgba(248, 250, 252, 0.92)',
+    textMuted: 'rgba(148, 163, 184, 0.85)',
+  },
+} as const;
+
+/** @deprecated Prefer lightSemanticTokens or theme-aware tokens in mobile. */
+export const semanticTokens = lightSemanticTokens;
+
 export type PrimitiveTokens = typeof primitiveTokens;
-export type SemanticTokens = typeof semanticTokens;
+export type SemanticTokens = {
+  readonly background: {
+    readonly default: string;
+    readonly subtle: string;
+    readonly inverse: string;
+  };
+  readonly surface: {
+    readonly default: string;
+    readonly elevated: string;
+    readonly muted: string;
+  };
+  readonly text: {
+    readonly primary: string;
+    readonly secondary: string;
+    readonly inverse: string;
+  };
+  readonly border: {
+    readonly default: string;
+    readonly strong: string;
+  };
+  readonly action: {
+    readonly primary: string;
+    readonly primaryHover: string;
+  };
+  readonly financial: {
+    readonly income: string;
+    readonly expense: string;
+    readonly balance: string;
+    readonly warning: string;
+    readonly positive: string;
+    readonly negative: string;
+  };
+  readonly status: {
+    readonly success: string;
+    readonly warning: string;
+    readonly danger: string;
+  };
+  readonly nav: {
+    readonly background: string;
+    readonly backgroundHover: string;
+    readonly active: string;
+    readonly text: string;
+    readonly textMuted: string;
+  };
+};

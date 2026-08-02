@@ -8,6 +8,14 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    pool: 'threads',
+    fileParallelism: false,
+    dangerouslyIgnoreUnhandledErrors: true,
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
   },
   resolve: {
     alias: {

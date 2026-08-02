@@ -2,7 +2,7 @@
 
 Sistema de planejamento financeiro pessoal e familiar (nome provisório).
 
-Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites. A **Etapa 4** entrega o **Planejamento Mensal** (orçamento por subcategoria). A **Etapa 5** entrega **Lançamentos** (receitas e gastos realizados) e a comparação **planejado versus realizado**.
+Esta etapa entrega a **arquitetura inicial**: monorepo, monólito modular, pacotes compartilhados, API de exemplo (Taxonomy), fundação web/mobile, infraestrutura local e documentação. A **Etapa 3** adiciona a aplicação web com autenticação via BFF (cookies HttpOnly), seleção de planejamento, gestão de categorias/subcategorias e convites. A **Etapa 4** entrega o **Planejamento Mensal** (orçamento por subcategoria). A **Etapa 5** entrega **Lançamentos** (receitas e gastos realizados) e a comparação **planejado versus realizado**. A **Etapa 6** entrega **Captura inteligente de compras** no mobile: escanear nota, processamento assíncrono com extrator fake, revisão, classificação por subcategoria e confirmação em lançamentos agrupados.
 
 ## Stack
 
@@ -295,6 +295,99 @@ Além dos usuários e do workspace **Planejamento Familiar Demo**, o seed cria c
 
 Credenciais demo: `demo.owner@pp-planning.local` / `demo.viewer@pp-planning.local` — senha `demo-senha-segura`.
 
+## Etapa 6 — Captura de notas (mobile)
+
+App Expo para escanear notas, classificar itens e confirmar lançamentos de gasto. **Sem OCR/IA real nesta etapa** — apenas `FakeReceiptExtractor`.
+
+### Configuração mobile
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
+
+| Ambiente                 | `EXPO_PUBLIC_API_URL`    |
+| ------------------------ | ------------------------ |
+| Android Emulator         | `http://10.0.2.2:3333`   |
+| Dispositivo físico (LAN) | `http://<IP_DO_PC>:3333` |
+| iOS Simulator (futuro)   | `http://127.0.0.1:3333`  |
+
+A URL é obrigatória — não há fallback silencioso. No `.env` da API, use `HOST=0.0.0.0` para aceitar conexões do emulador/dispositivo.
+
+### Infraestrutura e variáveis de receipt
+
+Após `pnpm infra:up`, o bucket **`pp-planning`** (privado) fica disponível no MinIO. No `.env` da raiz:
+
+```env
+RECEIPT_EXTRACTOR_PROVIDER=fake
+RECEIPT_PROCESSING_MAX_ATTEMPTS=3
+RECEIPT_IMAGE_MAX_SIZE_BYTES=10485760
+RECEIPT_IMAGE_MAX_COUNT=3
+RECEIPT_ALLOW_FAKE_IN_PRODUCTION=false
+```
+
+Em produção, `RECEIPT_EXTRACTOR_PROVIDER=fake` exige `RECEIPT_ALLOW_FAKE_IN_PRODUCTION=true` explícito.
+
+### Executar API + worker + mobile
+
+Em terminais separados (na raiz do monorepo):
+
+```bash
+pnpm infra:up
+pnpm db:migrate
+pnpm dev:api                              # terminal 1 — http://localhost:3333
+pnpm --filter @pp-planning/api worker:receipts   # terminal 2 — processa jobs
+pnpm --filter @pp-planning/mobile android        # terminal 3 — app Android
+```
+
+O **worker de receipts** é obrigatório para concluir o processamento após `POST .../process`.
+
+### Fluxo Android (smoke test)
+
+1. **Login** com credenciais demo (owner).
+2. Aba **Lançar** → **Escanear nota** (câmera ou galeria).
+3. Aguardar **Processando** (polling até status `review` ou `failed`).
+4. **Conferir** — editar estabelecimento, data, total se necessário.
+5. **Classificar itens** — individual ou em lote; categoria principal é só sugestão.
+6. **Resumo** — grupos por subcategoria; conferir total (tolerância 2 centavos).
+7. **Confirmar** — cria um `LedgerEntry` por subcategoria (não um por item).
+
+Alternativa: **Novo gasto manual** / **Nova receita** na mesma aba.
+
+### Cenários fake (desenvolvimento)
+
+Ao criar captura via API (`POST /v1/receipt-captures`), body opcional `fakeScenario`:
+
+| Valor                | Efeito                                     |
+| -------------------- | ------------------------------------------ |
+| `success`            | Extração padrão (4 itens, total R$ 132,20) |
+| `missing-item-value` | Item sem valor → `needsReview`             |
+| `total-mismatch`     | Total diverge da soma dos itens            |
+| `processing-failure` | Job falha após retries                     |
+| `long-receipt`       | 12 itens                                   |
+
+Não expor seletor de cenário na UI de produção. Útil via Swagger ou testes.
+
+### Limitações atuais (Etapa 6)
+
+- Sem fornecedor real de OCR/IA; sem SDKs externos instalados.
+- Sem operação offline ou fila de mutations local.
+- Sem planejamento completo, convites, relatórios avançados ou gestão de membros no mobile.
+- Sem divisão de um item entre duas subcategorias.
+- Sem sugestão automática de subcategoria por IA (apenas recentes locais na UI).
+- Imagens **não são excluídas** automaticamente após confirmação (MVP).
+- Web não implementa captura de notas nesta etapa.
+
+### Limpar sessão mobile
+
+- **Logout** na aba **Mais** → remove refresh token do SecureStore e access token da memória.
+- Ou reinstalar o app / limpar dados do app no emulador.
+- Chave SecureStore: `pp_planning_refresh_token`.
+
+### Permissões
+
+- **Owner / admin / member**: captura completa (`ledger.write`).
+- **Viewer**: somente leitura de capturas (`ledger.read`); não cria, processa nem confirma.
+
 ## Documentação
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -304,6 +397,10 @@ Credenciais demo: `demo.owner@pp-planning.local` / `demo.viewer@pp-planning.loca
 - [ADR-017 Concorrência otimista](./docs/adr/ADR-017-planning-optimistic-concurrency.md)
 - [ADR-018 Ledger Entry](./docs/adr/ADR-018-ledger-entry-model.md)
 - [ADR-019 Planejado versus realizado](./docs/adr/ADR-019-planned-versus-realized-read-model.md)
+- [ADR-020 Captura e processamento de notas](./docs/adr/ADR-020-receipt-capture-and-processing.md)
+- [ADR-021 Alocação de itens da nota](./docs/adr/ADR-021-receipt-item-allocation.md)
+- [ADR-022 Abstração do extrator](./docs/adr/ADR-022-receipt-extractor-provider-abstraction.md)
+- [Avaliação de extrator (futuro)](./docs/architecture/receipt-extractor-evaluation.md)
 - [Glossário](./docs/product/domain-glossary.md)
 - [Modelo de dados](./docs/architecture/data-model.md)
 - [Design system](./docs/architecture/design-system.md)

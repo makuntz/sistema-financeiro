@@ -1,6 +1,8 @@
 export {
   primitiveTokens,
   semanticTokens,
+  lightSemanticTokens,
+  darkSemanticTokens,
   type PrimitiveTokens,
   type SemanticTokens,
 } from './tokens.js';
