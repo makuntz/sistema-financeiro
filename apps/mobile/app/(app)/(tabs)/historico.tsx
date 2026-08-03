@@ -21,7 +21,7 @@ export default function HistoricoScreen() {
     setError(null);
     try {
       const response = await apiClient.listReceiptCaptures({ page: 1, pageSize: 30 });
-      setCaptures(response.data);
+      setCaptures(response.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar histórico');
     } finally {

@@ -171,6 +171,16 @@ export async function registerReceiptRoutes(
   app: FastifyInstance,
   deps: ReceiptHttpDeps,
 ): Promise<void> {
+  for (const contentType of ['image/jpeg', 'image/png', 'application/octet-stream'] as const) {
+    app.addContentTypeParser(
+      contentType,
+      { parseAs: 'buffer' },
+      (_request, body, done) => {
+        done(null, body);
+      },
+    );
+  }
+
   const imageLimits = {
     maxSizeBytes: deps.env.RECEIPT_IMAGE_MAX_SIZE_BYTES,
     maxCount: deps.env.RECEIPT_IMAGE_MAX_COUNT,
@@ -313,6 +323,65 @@ export async function registerReceiptRoutes(
         headers: result.headers,
       };
       return reply.status(201).send(response);
+    },
+  );
+
+  // Mobile/emulator-friendly upload: client sends bytes to the API, API writes to MinIO.
+  // Avoids direct emulator → MinIO networking (localhost / cleartext / port 9000 issues).
+  app.put(
+    '/v1/receipt-captures/:captureId/images/:imageId/content',
+    {
+      schema: {
+        tags: ['Receipts'],
+        security: [{ BearerAuth: [] }],
+        params: imageParamsSchema,
+        hide: true,
+      },
+      bodyLimit: deps.env.RECEIPT_IMAGE_MAX_SIZE_BYTES,
+      preHandler: writeGuard,
+    },
+    async (request, reply) => {
+      const { captureId, imageId } = imageParamsSchema.parse(request.params);
+      const workspaceId = request.workspace!.workspaceId;
+      const image = await deps.imageRepository.findById(imageId, workspaceId);
+      if (!image || image.receiptCaptureId !== captureId) {
+        throw new DomainError('RECEIPT_IMAGE_NOT_FOUND', 'Imagem não encontrada.');
+      }
+
+      const contentTypeHeader = request.headers['content-type'];
+      const contentType =
+        typeof contentTypeHeader === 'string'
+          ? contentTypeHeader.split(';')[0]?.trim()
+          : image.mimeType;
+      if (contentType !== 'image/jpeg' && contentType !== 'image/png') {
+        throw new DomainError('RECEIPT_IMAGE_INVALID', 'Tipo de imagem inválido.');
+      }
+
+      const body = request.body;
+      if (!Buffer.isBuffer(body) || body.length === 0) {
+        throw new DomainError('RECEIPT_IMAGE_INVALID', 'Corpo da imagem inválido.');
+      }
+      if (body.length > deps.env.RECEIPT_IMAGE_MAX_SIZE_BYTES) {
+        throw new DomainError('RECEIPT_IMAGE_TOO_LARGE', 'A imagem excede o tamanho máximo.');
+      }
+
+      await deps.fileStorage.putObject({
+        key: image.storageKey,
+        body,
+        mimeType: contentType,
+      });
+
+      await completeUpload.execute({ captureId, workspaceId, imageId });
+      await deps.auditLogger.record({
+        name: 'ReceiptImageUploaded',
+        actorUserId: request.auth!.userId,
+        workspaceId,
+        occurredAt: new Date(),
+        payload: { captureId, imageId, sizeInBytes: body.length },
+      });
+
+      const dto = await fetchEnrichedDto(deps, captureId, workspaceId);
+      return reply.send(dto);
     },
   );
 
@@ -605,11 +674,13 @@ export async function registerReceiptRoutes(
       });
 
       return reply.send({
-        items,
-        page: query.page,
-        pageSize: query.pageSize,
-        totalItems,
-        totalPages: Math.ceil(totalItems / query.pageSize) || 1,
+        data: items,
+        meta: {
+          page: query.page,
+          pageSize: query.pageSize,
+          totalItems,
+          totalPages: Math.max(1, Math.ceil(totalItems / query.pageSize)),
+        },
       });
     },
   );

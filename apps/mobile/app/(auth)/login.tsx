@@ -3,11 +3,13 @@ import { StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Button, Input, Screen, Text } from '@pp-planning/ui-mobile';
 import { useAuth } from '@/src/providers/auth-provider';
+import { getDevAutoLoginCredentials, isDevAutoLoginEnabled } from '@/src/lib/utils';
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const defaults = isDevAutoLoginEnabled() ? getDevAutoLoginCredentials() : null;
+  const [email, setEmail] = useState(defaults?.email ?? '');
+  const [password, setPassword] = useState(defaults?.password ?? '');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +20,16 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       router.replace('/(app)/(tabs)/lancar');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível entrar');
+      const message = err instanceof Error ? err.message : 'Não foi possível entrar';
+      const unreachable =
+        message.includes('Network') ||
+        message.includes('Failed to fetch') ||
+        message.includes('Network request failed');
+      setError(
+        unreachable
+          ? 'Não foi possível conectar à API. Confirme se `pnpm dev:api` está rodando.'
+          : message,
+      );
     } finally {
       setLoading(false);
     }

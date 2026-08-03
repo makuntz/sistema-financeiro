@@ -14,6 +14,7 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.7",
     "@pp-planning/api-client": "workspace:*",
     "@pp-planning/contracts": "workspace:^",
     "@pp-planning/design-tokens": "workspace:*",
@@ -28,6 +29,7 @@
     "expo-router": "~4.0.15",
     "expo-secure-store": "~14.0.1",
     "expo-status-bar": "~2.0.0",
+    "invariant": "^2.2.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.5",

@@ -16,6 +16,7 @@ export interface FileStorage {
     expiresInSeconds: number;
   }): Promise<UploadUrlResult>;
   createDownloadUrl(input: { key: string; expiresInSeconds: number }): Promise<UploadUrlResult>;
+  putObject(input: { key: string; body: Buffer; mimeType: string }): Promise<void>;
   exists(key: string): Promise<boolean>;
   getObjectMetadata(key: string): Promise<ObjectMetadata | null>;
   delete?(key: string): Promise<void>;
@@ -51,6 +52,10 @@ export class InMemoryFileStorage implements FileStorage {
       expiresAt,
       headers: {},
     };
+  }
+
+  async putObject(input: { key: string; body: Buffer; mimeType: string }): Promise<void> {
+    this.put(input.key, input.body, input.mimeType);
   }
 
   async exists(key: string): Promise<boolean> {

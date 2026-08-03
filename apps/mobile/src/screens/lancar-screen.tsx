@@ -18,8 +18,9 @@ export function LancarScreenContent() {
     setError(null);
     try {
       const response = await apiClient.listReceiptCaptures({ page: 1, pageSize: 5 });
-      setCaptures(response.data);
+      setCaptures(response.data ?? []);
     } catch (err) {
+      setCaptures([]);
       setError(err instanceof Error ? err.message : 'Erro ao carregar capturas');
     } finally {
       setLoading(false);
@@ -83,13 +84,13 @@ export function LancarScreenContent() {
               onPress={() => void loadCaptures()}
             />
           </Card>
-        ) : captures.length === 0 ? (
+        ) : (captures ?? []).length === 0 ? (
           <Card>
             <Text tone="secondary">Nenhuma captura recente. Escaneie sua primeira nota.</Text>
           </Card>
         ) : (
           <FlatList
-            data={captures}
+            data={captures ?? []}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
             renderItem={({ item }) => (

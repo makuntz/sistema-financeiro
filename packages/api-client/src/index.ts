@@ -421,6 +421,23 @@ export class ApiClient {
     );
   }
 
+  /** Uploads image bytes via the API (API writes to storage). Prefer this on mobile/emulator. */
+  async uploadReceiptImageContent(
+    captureId: string,
+    imageId: string,
+    body: Blob | ArrayBuffer | Uint8Array,
+    mimeType: string,
+  ): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(
+      `/v1/receipt-captures/${captureId}/images/${imageId}/content`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeType },
+        body: body as BodyInit,
+      },
+    );
+  }
+
   async processReceiptCapture(captureId: string): Promise<ReceiptCaptureDto> {
     return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}/process`, {
       method: 'POST',

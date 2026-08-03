@@ -16,6 +16,8 @@ const envSchema = z
     PASSWORD_HASH_TIME_COST: z.coerce.number().int().positive().default(2),
     PASSWORD_HASH_PARALLELISM: z.coerce.number().int().positive().default(1),
     S3_ENDPOINT: z.string().url().optional(),
+    /** URL reachable by clients (emulator/device). Defaults to S3_ENDPOINT. */
+    S3_PUBLIC_ENDPOINT: z.string().url().optional(),
     S3_REGION: z.string().default('us-east-1'),
     S3_BUCKET: z.string().default('pp-planning'),
     S3_ACCESS_KEY: z.string().optional(),

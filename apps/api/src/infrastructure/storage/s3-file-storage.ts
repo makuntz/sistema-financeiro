@@ -23,6 +23,7 @@ export function createS3FileStorage(env: Env): FileStorage {
 
   return new S3FileStorage({
     endpoint: env.S3_ENDPOINT,
+    publicEndpoint: env.S3_PUBLIC_ENDPOINT ?? env.S3_ENDPOINT,
     region: env.S3_REGION,
     bucket: env.S3_BUCKET,
     accessKeyId: env.S3_ACCESS_KEY,
@@ -32,26 +33,48 @@ export function createS3FileStorage(env: Env): FileStorage {
 
 type S3FileStorageConfig = {
   endpoint: string;
+  publicEndpoint: string;
   region: string;
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
 };
 
+function buildClient(config: {
+  endpoint: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+}): S3Client {
+  return new S3Client({
+    endpoint: config.endpoint,
+    region: config.region,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+    forcePathStyle: true,
+  });
+}
+
 export class S3FileStorage implements FileStorage {
-  private readonly client: S3Client;
+  private readonly internalClient: S3Client;
+  private readonly publicClient: S3Client;
   private readonly bucket: string;
 
   constructor(config: S3FileStorageConfig) {
     this.bucket = config.bucket;
-    this.client = new S3Client({
+    this.internalClient = buildClient({
       endpoint: config.endpoint,
       region: config.region,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
-      forcePathStyle: true,
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    });
+    this.publicClient = buildClient({
+      endpoint: config.publicEndpoint,
+      region: config.region,
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
     });
   }
 
@@ -65,7 +88,8 @@ export class S3FileStorage implements FileStorage {
       Key: input.key,
       ContentType: input.mimeType,
     });
-    const url = await getSignedUrl(this.client, command, {
+    // Sign with the public endpoint so emulator/device can PUT directly.
+    const url = await getSignedUrl(this.publicClient, command, {
       expiresIn: input.expiresInSeconds,
     });
     return {
@@ -83,7 +107,7 @@ export class S3FileStorage implements FileStorage {
       Bucket: this.bucket,
       Key: input.key,
     });
-    const url = await getSignedUrl(this.client, command, {
+    const url = await getSignedUrl(this.publicClient, command, {
       expiresIn: input.expiresInSeconds,
     });
     return {
@@ -93,6 +117,17 @@ export class S3FileStorage implements FileStorage {
     };
   }
 
+  async putObject(input: { key: string; body: Buffer; mimeType: string }): Promise<void> {
+    await this.internalClient.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: input.key,
+        Body: input.body,
+        ContentType: input.mimeType,
+      }),
+    );
+  }
+
   async exists(key: string): Promise<boolean> {
     const metadata = await this.getObjectMetadata(key);
     return metadata != null;
@@ -100,7 +135,7 @@ export class S3FileStorage implements FileStorage {
 
   async getObjectMetadata(key: string): Promise<ObjectMetadata | null> {
     try {
-      const response = await this.client.send(
+      const response = await this.internalClient.send(
         new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
       );
       return {
@@ -117,7 +152,9 @@ export class S3FileStorage implements FileStorage {
   }
 
   async delete(key: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+    await this.internalClient.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
   }
 }
 

@@ -8,6 +8,22 @@ export function resolveApiUrl(): string {
   return url.replace(/\/$/, '');
 }
 
+/** Auto-login local only. Never enable outside development. */
+export function isDevAutoLoginEnabled(): boolean {
+  if (!__DEV__) {
+    return false;
+  }
+  const flag = process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN?.trim().toLowerCase();
+  return flag === '1' || flag === 'true' || flag === 'yes';
+}
+
+export function getDevAutoLoginCredentials(): { email: string; password: string } {
+  return {
+    email: process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL?.trim() || 'demo.owner@pp-planning.local',
+    password: process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD?.trim() || 'demo-senha-segura',
+  };
+}
+
 export function getPollingDelayMs(attempt: number): number {
   const base = 2000;
   const cap = 13000;

@@ -1,5 +1,4 @@
 import { createApiClient, type ApiClient, type ApiClientOptions } from '@pp-planning/api-client';
-import type { CreateReceiptUploadUrlResponse } from '@pp-planning/contracts';
 import { createUnauthorizedHandler, getAccessToken, requestWithAuthRetry } from './session';
 import { resolveApiUrl } from './utils';
 
@@ -64,30 +63,6 @@ export function createRawApiClient(options: Partial<ApiClientOptions> = {}): Api
   });
 }
 
-export async function uploadToPresignedUrl(
-  upload: CreateReceiptUploadUrlResponse,
-  fileUri: string,
-  mimeType: string,
-): Promise<void> {
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
-
-  const headers = new Headers(upload.headers);
-  if (!headers.has('Content-Type')) {
-    headers.set('Content-Type', mimeType);
-  }
-
-  const uploadResponse = await fetch(upload.uploadUrl, {
-    method: 'PUT',
-    headers,
-    body: blob,
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error('Falha ao enviar imagem da nota fiscal.');
-  }
-}
-
 export async function uploadReceiptImage(
   captureId: string,
   image: { uri: string; mimeType: 'image/jpeg' | 'image/png'; sizeInBytes: number },
@@ -97,6 +72,22 @@ export async function uploadReceiptImage(
     sizeInBytes: image.sizeInBytes,
   });
 
-  await uploadToPresignedUrl(uploadMeta, image.uri, image.mimeType);
-  await apiClient.completeReceiptImageUpload(captureId, uploadMeta.imageId);
+  const fileResponse = await fetch(image.uri);
+  const blob = await fileResponse.blob();
+
+  try {
+    // Upload via API → MinIO (avoids emulator talking to MinIO on :9000 directly).
+    await apiClient.uploadReceiptImageContent(
+      captureId,
+      uploadMeta.imageId,
+      blob,
+      image.mimeType,
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Não foi possível enviar a imagem. Confirme a API (`pnpm dev:api`) e MinIO (`pnpm infra:up`).';
+    throw new Error(message);
+  }
 }

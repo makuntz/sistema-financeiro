@@ -16,6 +16,7 @@ import {
   getStoredRefreshToken,
   storeSessionTokens,
 } from '@/src/lib/session';
+import { getDevAutoLoginCredentials, isDevAutoLoginEnabled } from '@/src/lib/utils';
 
 const WORKSPACE_KEY = 'pp_planning_workspace_id';
 const THEME_KEY = 'pp_planning_theme';
@@ -83,16 +84,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setThemePreferenceState(storedTheme);
       }
 
+      let authenticated = false;
       const refreshToken = await getStoredRefreshToken();
-      if (!refreshToken) {
-        return;
+      if (refreshToken) {
+        try {
+          const refreshed = await rawApiClient.refresh({ refreshToken });
+          await storeSessionTokens(refreshed.tokens);
+          setUser(refreshed.user);
+          await refreshWorkspaces();
+          authenticated = true;
+        } catch {
+          await clearSession();
+          handleSessionExpired();
+        }
       }
 
-      const refreshed = await rawApiClient.refresh({ refreshToken });
-      await storeSessionTokens(refreshed.tokens);
-      setUser(refreshed.user);
-      await refreshWorkspaces();
-    } catch {
+      if (!authenticated && isDevAutoLoginEnabled()) {
+        const credentials = getDevAutoLoginCredentials();
+        const response = await rawApiClient.login(credentials);
+        await storeSessionTokens(response.tokens);
+        setUser(response.user);
+        await refreshWorkspaces();
+      }
+    } catch (error) {
+      console.warn('[auth] bootstrap failed', error);
       await clearSession();
       handleSessionExpired();
     } finally {
