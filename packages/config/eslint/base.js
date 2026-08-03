@@ -15,6 +15,7 @@ export default [
       '**/.expo/**',
       '**/next-env.d.ts',
       '**/babel.config.js',
+      '**/metro.config.js',
       '**/postcss.config.js',
       '**/tailwind.config.js',
       '**/eslint.config.*',
