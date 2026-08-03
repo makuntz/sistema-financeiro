@@ -38,6 +38,21 @@ import {
   type PaginatedLedgerEntriesResponse,
   type MonthlyLedgerSummaryDto,
   type MonthlyBudgetComparisonDto,
+  type ReceiptCaptureDto,
+  type ReceiptItemDto,
+  type ReceiptImageDto,
+  type CreateReceiptCaptureRequest,
+  type CreateReceiptUploadUrlRequest,
+  type CreateReceiptUploadUrlResponse,
+  type CompleteReceiptImageUploadRequest,
+  type UpdateReceiptCaptureRequest,
+  type UpdateReceiptItemRequest,
+  type BulkAssignReceiptItemsRequest,
+  type BulkIgnoreReceiptItemsRequest,
+  type ConfirmReceiptCaptureRequest,
+  type ReceiptConfirmationResultDto,
+  type ReceiptCaptureListQuery,
+  type PaginatedReceiptCapturesDto,
 } from '@pp-planning/contracts';
 
 export class ApiClientError extends Error {
@@ -368,6 +383,145 @@ export class ApiClient {
     month: number,
   ): Promise<MonthlyBudgetComparisonDto> {
     return this.request<MonthlyBudgetComparisonDto>(`/v1/reports/monthly-budget/${year}/${month}`);
+  }
+
+  // --- Receipt captures ---
+
+  async createReceiptCapture(input: CreateReceiptCaptureRequest = {}): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>('/v1/receipt-captures', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async createReceiptImageUploadUrl(
+    captureId: string,
+    input: CreateReceiptUploadUrlRequest,
+  ): Promise<CreateReceiptUploadUrlResponse> {
+    return this.request<CreateReceiptUploadUrlResponse>(
+      `/v1/receipt-captures/${captureId}/images/upload-url`,
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  async completeReceiptImageUpload(
+    captureId: string,
+    imageId: string,
+    input: CompleteReceiptImageUploadRequest = {},
+  ): Promise<ReceiptImageDto> {
+    return this.request<ReceiptImageDto>(
+      `/v1/receipt-captures/${captureId}/images/${imageId}/complete`,
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  /** Uploads image bytes via the API (API writes to storage). Prefer this on mobile/emulator. */
+  async uploadReceiptImageContent(
+    captureId: string,
+    imageId: string,
+    body: Blob | ArrayBuffer | Uint8Array,
+    mimeType: string,
+  ): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(
+      `/v1/receipt-captures/${captureId}/images/${imageId}/content`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeType },
+        body: body as BodyInit,
+      },
+    );
+  }
+
+  async processReceiptCapture(captureId: string): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}/process`, {
+      method: 'POST',
+    });
+  }
+
+  async getReceiptCapture(captureId: string): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}`);
+  }
+
+  async updateReceiptCapture(
+    captureId: string,
+    input: UpdateReceiptCaptureRequest,
+  ): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateReceiptItem(
+    captureId: string,
+    itemId: string,
+    input: UpdateReceiptItemRequest,
+  ): Promise<ReceiptItemDto> {
+    return this.request<ReceiptItemDto>(`/v1/receipt-captures/${captureId}/items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async bulkAssignReceiptItems(
+    captureId: string,
+    input: BulkAssignReceiptItemsRequest,
+  ): Promise<{ data: ReceiptItemDto[] }> {
+    return this.request<{ data: ReceiptItemDto[] }>(
+      `/v1/receipt-captures/${captureId}/items/bulk-assign`,
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  async bulkIgnoreReceiptItems(
+    captureId: string,
+    input: BulkIgnoreReceiptItemsRequest,
+  ): Promise<{ data: ReceiptItemDto[] }> {
+    return this.request<{ data: ReceiptItemDto[] }>(
+      `/v1/receipt-captures/${captureId}/items/bulk-ignore`,
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  async confirmReceiptCapture(
+    captureId: string,
+    input: ConfirmReceiptCaptureRequest = {},
+  ): Promise<ReceiptConfirmationResultDto> {
+    return this.request<ReceiptConfirmationResultDto>(`/v1/receipt-captures/${captureId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async listReceiptCaptures(
+    query: Partial<ReceiptCaptureListQuery> = {},
+  ): Promise<PaginatedReceiptCapturesDto> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      }
+    }
+    const qs = params.toString();
+    return this.request<PaginatedReceiptCapturesDto>(`/v1/receipt-captures${qs ? `?${qs}` : ''}`);
+  }
+
+  async reprocessReceiptCapture(captureId: string): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}/reprocess`, {
+      method: 'POST',
+    });
   }
 
   // --- Internal ---

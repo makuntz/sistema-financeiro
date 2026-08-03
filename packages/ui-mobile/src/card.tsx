@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View, Text, StyleSheet, type ViewProps } from 'react-native';
-import { semanticTokens } from '@pp-planning/design-tokens';
+import { useSemanticTokens } from './theme';
 
 export type CardProps = ViewProps & {
   title?: string;
@@ -8,9 +8,21 @@ export type CardProps = ViewProps & {
 };
 
 export function Card({ title, children, style, ...props }: CardProps) {
+  const tokens = useSemanticTokens();
+
   return (
-    <View {...props} style={[styles.card, style]}>
-      {title ? <Text style={styles.title}>{title}</Text> : null}
+    <View
+      {...props}
+      style={[
+        styles.card,
+        {
+          backgroundColor: tokens.surface.default,
+          borderColor: tokens.border.default,
+        },
+        style,
+      ]}
+    >
+      {title ? <Text style={[styles.title, { color: tokens.text.primary }]}>{title}</Text> : null}
       {children}
     </View>
   );
@@ -18,8 +30,6 @@ export function Card({ title, children, style, ...props }: CardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderColor: semanticTokens.border.default,
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
@@ -27,7 +37,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: semanticTokens.text.primary,
     marginBottom: 8,
   },
 });

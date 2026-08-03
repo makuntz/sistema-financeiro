@@ -37,6 +37,9 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@pp-planning/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.20.1",

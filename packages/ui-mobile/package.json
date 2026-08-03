@@ -14,9 +14,11 @@
   },
   "peerDependencies": {
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "react-native-safe-area-context": "*"
   },
   "dependencies": {
+    "@pp-planning/contracts": "workspace:*",
     "@pp-planning/design-tokens": "workspace:*"
   },
   "devDependencies": {

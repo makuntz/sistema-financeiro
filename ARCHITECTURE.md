@@ -10,23 +10,23 @@ No estágio atual, um único deploy de API com módulos bem delimitados oferece 
 
 ## Limites dos módulos
 
-| Módulo             | Responsabilidade                                |
-| ------------------ | ----------------------------------------------- |
-| Identity           | Usuários, autenticação, sessões, preferências   |
-| Workspaces         | Espaço compartilhado, membros, papéis, convites |
-| Taxonomy           | Categorias, subcategorias, fontes de receita    |
-| Planning           | Orçamento mensal planejado                      |
-| Ledger             | O que realmente aconteceu (lançamentos)         |
-| Accounts           | Contas, bancos, saldos                          |
-| Cards              | Cartões e faturas                               |
-| Installments       | Compras parceladas                              |
-| Recurring          | Regras recorrentes                              |
-| Documents          | Anexos e metadados                              |
-| Receipt Processing | OCR/IA (futuro), com confirmação humana         |
-| Reports            | Agregações e indicadores                        |
-| Goals              | Metas                                           |
-| Notifications      | Alertas (futuro)                                |
-| Audit              | Trilha de auditoria                             |
+| Módulo             | Responsabilidade                                               |
+| ------------------ | -------------------------------------------------------------- |
+| Identity           | Usuários, autenticação, sessões, preferências                  |
+| Workspaces         | Espaço compartilhado, membros, papéis, convites                |
+| Taxonomy           | Categorias, subcategorias, fontes de receita                   |
+| Planning           | Orçamento mensal planejado                                     |
+| Ledger             | O que realmente aconteceu (lançamentos)                        |
+| Accounts           | Contas, bancos, saldos                                         |
+| Cards              | Cartões e faturas                                              |
+| Installments       | Compras parceladas                                             |
+| Recurring          | Regras recorrentes                                             |
+| Documents          | Anexos e metadados                                             |
+| Receipt Processing | Captura de notas, extração (fake), confirmação humana → Ledger |
+| Reports            | Agregações e indicadores                                       |
+| Goals              | Metas                                                          |
+| Notifications      | Alertas (futuro)                                               |
+| Audit              | Trilha de auditoria                                            |
 
 ## Fluxo de dependências
 
@@ -118,13 +118,88 @@ Exemplo: uma `Transaction` tem `workspaceId` (visível a todos os membros com pe
 
 Ver [ADR-018](./docs/adr/ADR-018-ledger-entry-model.md) e [ADR-019](./docs/adr/ADR-019-planned-versus-realized-read-model.md).
 
-## OCR e IA (futuro)
+## Captura de notas — Receipt Processing (Etapa 6)
 
-O módulo Receipt Processing extrai dados e sugere lançamentos. **Nunca** grava no Ledger sem confirmação do usuário.
+Fluxo mobile-first: fotografar nota → upload privado → processamento assíncrono → revisão → classificação por subcategoria → confirmação → um ou mais `LedgerEntry` agrupados. **Nunca** grava no Ledger sem confirmação humana.
 
-## Arquivos (futuro)
+ADRs: [ADR-020](./docs/adr/ADR-020-receipt-capture-and-processing.md), [ADR-021](./docs/adr/ADR-021-receipt-item-allocation.md), [ADR-022](./docs/adr/ADR-022-receipt-extractor-provider-abstraction.md). Avaliação futura de fornecedor: [receipt-extractor-evaluation.md](./docs/architecture/receipt-extractor-evaluation.md).
 
-Interface S3-compatible. Localmente: MinIO. Anexos privados com URLs temporárias.
+### Entidades
+
+| Entidade               | Papel                                                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ReceiptCapture`       | Agregado da compra fotografada; status, merchant, data, total, `defaultCategoryId` (sugestão), metadados de extração |
+| `ReceiptImage`         | Metadados da imagem (`storageKey`, MIME, tamanho, posição); bytes no storage externo                                 |
+| `ReceiptItem`          | Linha extraída/revisada; `selectedSubcategoryId` é fonte da verdade; sem `categoryId` persistido                     |
+| `ReceiptProcessingJob` | Fila persistida no PostgreSQL; lock, tentativas, retry                                                               |
+
+`LedgerEntry` ganhou `origin` (`manual` \| `receipt`) e `receiptCaptureId` opcional para rastrear lançamentos gerados pela captura.
+
+### Extração (FakeReceiptExtractor)
+
+- Porta de domínio: `ReceiptExtractor.extract(ReceiptExtractionInput) → ReceiptExtractionResult`.
+- Implementação atual: **`FakeReceiptExtractor`** (`RECEIPT_EXTRACTOR_PROVIDER=fake`); cenários de dev: `success`, `missing-item-value`, `total-mismatch`, `processing-failure`, `long-receipt`.
+- Saída validada com Zod antes de persistir itens. Nenhum SDK de OCR/IA real nesta etapa.
+
+### Storage e upload
+
+- Abstração `FileStorage`: `createUploadUrl`, `createDownloadUrl`, `exists`, `getObjectMetadata`, `delete`.
+- Local: **MinIO** (`S3_*` no `.env`); bucket privado `pp-planning`.
+- Chave gerada pela API: `workspaces/{workspaceId}/receipts/{captureId}/{imageId}.jpg` — cliente não escolhe prefixo livre.
+- Fluxo: criar captura → solicitar URL pré-assinada → PUT direto no storage → `complete` (API verifica objeto) → `process`.
+- Download para revisão: URL temporária (~15 min); **`storageKey` não é exposto** ao cliente.
+- Limites: `RECEIPT_IMAGE_MAX_SIZE_BYTES` (padrão 10 MB), `RECEIPT_IMAGE_MAX_COUNT` (padrão 3), JPEG/PNG.
+
+### Worker e jobs
+
+- Processo separado: `pnpm --filter @pp-planning/api worker:receipts` (polling a cada ~2 s).
+- Claim: `SELECT … FOR UPDATE SKIP LOCKED` em jobs `pending` / `retryScheduled`.
+- Lock: `lockedAt` / `lockedBy`; expira após 5 min.
+- Retry: até **`RECEIPT_PROCESSING_MAX_ATTEMPTS`** (padrão **3**), intervalo 30 s; status `retryScheduled` → nova tentativa.
+- Falha definitiva marca captura `failed` com `failureCode` / `failureMessage` seguros.
+
+### Máquina de estados (`ReceiptCapture`)
+
+```
+draft → uploaded → processing → review → confirmed
+                      ↓            ↑
+                    failed    (reprocess)
+                      ↓
+                  canceled
+```
+
+Transições inválidas → `RECEIPT_CAPTURE_INVALID_STATUS`. Captura `confirmed` é terminal nesta etapa.
+
+### Agrupamento → Ledger
+
+- Itens não ignorados agrupados por `selectedSubcategoryId`.
+- **Um `LedgerEntry` por grupo** (não por item); soma dos `lineTotalInCents`.
+- Reconciliação: total da nota vs. soma dos itens; tolerância **`RECEIPT_TOTAL_TOLERANCE_CENTS = 2`** centavos.
+- Confirmação atômica: criar lançamentos + marcar captura confirmada numa transação.
+
+### Permissões
+
+| Permissão      | Capturas                                                 |
+| -------------- | -------------------------------------------------------- |
+| `ledger.read`  | Listar e visualizar capturas (incl. viewer)              |
+| `ledger.write` | Criar, upload, processar, editar, classificar, confirmar |
+
+Rotas exigem `Authorization` + `X-Workspace-Id` + membership ativo.
+
+### Autenticação mobile
+
+Mobile consome **API Fastify diretamente** (sem BFF). Access token em memória; refresh token no **Expo SecureStore**; refresh único em 401. `EXPO_PUBLIC_API_URL` obrigatória. API escuta em `HOST` (padrão `0.0.0.0`) para emulador/dispositivo na LAN.
+
+### Segurança, privacidade e retenção
+
+- Bucket privado; sem URL pública permanente; sem base64 no PostgreSQL.
+- Pré-processamento mobile: redimensiona (máx. 2400 px), JPEG, compressão — reduz EXIF/dados sensíveis.
+- Logs/auditoria: **não** registram imagem, OCR completo, `storageKey`, URL pré-assinada ou lista integral de produtos.
+- **Retenção MVP**: imagens e capturas **permanecem após confirmação**; sem auto-delete; preparar exclusão futura sem inventar prazos legais.
+
+### Escolha futura do provider
+
+Critérios e benchmark (30–50 notas, KPI = tempo médio de correção humana) em [receipt-extractor-evaluation.md](./docs/architecture/receipt-extractor-evaluation.md). Novo provider implementa `ReceiptExtractor` + extensão controlada de `RECEIPT_EXTRACTOR_PROVIDER`.
 
 ## Eventos internos
 
