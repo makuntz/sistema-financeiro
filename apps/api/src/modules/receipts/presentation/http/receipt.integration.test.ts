@@ -97,7 +97,7 @@ describe('Receipt captures - integration smoke', () => {
   });
 
   beforeEach(async () => {
-    getSharedInMemoryFileStorage();
+    getSharedInMemoryFileStorage().clear();
     await prisma.ledgerEntry.deleteMany();
     await prisma.receiptProcessingJob.deleteMany();
     await prisma.receiptItem.deleteMany();
@@ -152,14 +152,14 @@ describe('Receipt captures - integration smoke', () => {
     expect(uploadUrlRes.statusCode).toBe(201);
     const { imageId } = uploadUrlRes.json() as { imageId: string };
 
-    const storageKey = `receipts/${auth.workspace.id}/${captureId}/${imageId}`;
-    getSharedInMemoryFileStorage().put(storageKey, Buffer.alloc(1024), 'image/jpeg');
-
     const completeRes = await app.inject({
-      method: 'POST',
-      url: `/v1/receipt-captures/${captureId}/images/${imageId}/complete`,
-      headers,
-      payload: {},
+      method: 'PUT',
+      url: `/v1/receipt-captures/${captureId}/images/${imageId}/content`,
+      headers: {
+        ...headers,
+        'content-type': 'image/jpeg',
+      },
+      payload: Buffer.alloc(1024),
     });
     expect(completeRes.statusCode).toBe(200);
     expect(completeRes.json().status).toBe('uploaded');

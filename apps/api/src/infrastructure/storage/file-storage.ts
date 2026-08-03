@@ -71,4 +71,8 @@ export class InMemoryFileStorage implements FileStorage {
   async delete(key: string): Promise<void> {
     this.objects.delete(key);
   }
+
+  clear(): void {
+    this.objects.clear();
+  }
 }
