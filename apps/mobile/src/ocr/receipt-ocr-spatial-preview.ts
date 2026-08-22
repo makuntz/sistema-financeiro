@@ -10,6 +10,7 @@ export type ReceiptOcrSpatialElement = {
   frame: ReceiptOcrRect;
   centerX: number;
   centerY: number;
+  normalizedCenterX: number;
 };
 
 export type ReceiptOcrSpatialRow = {
@@ -75,23 +76,30 @@ export function groupReceiptOcrLinesByRow(
   return groups;
 }
 
-function lineToSpatialElements(line: ReceiptOcrLine): ReceiptOcrSpatialElement[] {
+function lineToSpatialElements(line: ReceiptOcrLine, pageWidth: number): ReceiptOcrSpatialElement[] {
   const source =
     line.elements.length > 0
       ? line.elements
       : [{ text: line.text, frame: line.frame }];
 
-  return source.map((element) => ({
-    text: element.text,
-    frame: element.frame,
-    centerX: getReceiptOcrRectCenterX(element.frame),
-    centerY: getReceiptOcrRectCenterY(element.frame),
-  }));
+  return source.map((element) => {
+    const centerX = getReceiptOcrRectCenterX(element.frame);
+    return {
+      text: element.text,
+      frame: element.frame,
+      centerX,
+      centerY: getReceiptOcrRectCenterY(element.frame),
+      normalizedCenterX: pageWidth > 0 ? centerX / pageWidth : 0,
+    };
+  });
 }
 
-function buildRowPreview(rowLines: ReceiptOcrLine[]): Pick<ReceiptOcrSpatialRow, 'leftText' | 'price' | 'preview'> {
+function buildRowPreview(
+  rowLines: ReceiptOcrLine[],
+  pageWidth: number,
+): Pick<ReceiptOcrSpatialRow, 'leftText' | 'price' | 'preview'> {
   const elements = rowLines
-    .flatMap((line) => lineToSpatialElements(line))
+    .flatMap((line) => lineToSpatialElements(line, pageWidth))
     .sort((a, b) => a.centerX - b.centerX);
 
   const priceElements = elements.filter((element) => looksLikeBrazilianRetailPrice(element.text));
@@ -136,13 +144,14 @@ export function buildReceiptOcrSpatialPreview(
   document: ReceiptOcrDocument,
   tolerancePx = DEFAULT_ROW_TOLERANCE_PX,
 ): ReceiptOcrSpatialRow[] {
+  const pageWidth = document.pages[0]?.width ?? 1;
   const rowGroups = groupReceiptOcrLinesByRow(flattenReceiptOcrLines(document), tolerancePx);
 
   return rowGroups.map((lines, rowIndex) => {
-    const elements = lines.flatMap((line) => lineToSpatialElements(line));
+    const elements = lines.flatMap((line) => lineToSpatialElements(line, pageWidth));
     const centerY =
       elements.reduce((sum, element) => sum + element.centerY, 0) / Math.max(elements.length, 1);
-    const previewParts = buildRowPreview(lines);
+    const previewParts = buildRowPreview(lines, pageWidth);
 
     return {
       rowIndex,

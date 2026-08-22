@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Redirect, router } from 'expo-router';
@@ -83,6 +83,15 @@ export default function OcrTestScreen() {
       setResult(null);
       setError(null);
     }
+  }
+
+  async function shareStructuredOcr() {
+    if (!result) {
+      return;
+    }
+    await Share.share({
+      message: JSON.stringify(result.document, null, 2),
+    });
   }
 
   async function runOcr() {
@@ -179,6 +188,12 @@ export default function OcrTestScreen() {
             />
             <Button label="Limpar resultado" variant="secondary" disabled={running} onPress={clearResult} />
             <Button label="Tirar outra" variant="secondary" disabled={running} onPress={clearResult} />
+            <Button
+              label="Compartilhar OCR estruturado"
+              variant="secondary"
+              disabled={running || !result}
+              onPress={() => void shareStructuredOcr()}
+            />
           </View>
 
           {error ? <Text tone="danger">{error}</Text> : null}
@@ -212,6 +227,14 @@ export default function OcrTestScreen() {
                     </Text>
                     <Text tone="secondary">
                       Linhas na fileira: {row.lines.map((line) => `"${line.text}"`).join(' + ')}
+                    </Text>
+                    <Text selectable style={styles.mono}>
+                      {row.elements
+                        .map(
+                          (element) =>
+                            `[X ${element.normalizedCenterX.toFixed(2)}] ${element.text}`,
+                        )
+                        .join('\n')}
                     </Text>
                   </View>
                 ))}
