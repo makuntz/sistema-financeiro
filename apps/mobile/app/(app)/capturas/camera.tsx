@@ -4,7 +4,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Button, Screen, Text } from '@pp-planning/ui-mobile';
+import { DevFakeScenarioPicker } from '@/src/components/dev-fake-scenario-picker';
 import { apiClient, uploadReceiptImage } from '@/src/lib/api';
+import { getDevFakeScenario } from '@/src/lib/dev-fake-scenario';
 import { preprocessReceiptImage } from '@/src/lib/image-preprocess';
 
 export default function CameraScreen() {
@@ -25,7 +27,10 @@ export default function CameraScreen() {
     setError(null);
     try {
       const processed = await preprocessReceiptImage(uri);
-      const capture = await apiClient.createReceiptCapture({});
+      const fakeScenario = getDevFakeScenario();
+      const capture = await apiClient.createReceiptCapture(
+        fakeScenario ? { fakeScenario } : {},
+      );
       await uploadReceiptImage(capture.id, processed);
       await apiClient.processReceiptCapture(capture.id);
       router.replace(`/(app)/capturas/${capture.id}/processando`);
@@ -81,6 +86,7 @@ export default function CameraScreen() {
   if (previewUri) {
     return (
       <Screen scroll>
+        <DevFakeScenarioPicker />
         <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
         {error ? <Text tone="danger">{error}</Text> : null}
         <Button
@@ -103,6 +109,9 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.devPanel}>
+        <DevFakeScenarioPicker />
+      </View>
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
       <View style={styles.controls}>
         <Button label="Capturar" onPress={() => void takePhoto()} />
@@ -115,6 +124,10 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  devPanel: {
+    padding: 12,
+    paddingBottom: 0,
   },
   camera: {
     flex: 1,
