@@ -109,6 +109,7 @@ describe('parseBRLInputToCents', () => {
   it('handles simple number format', () => {
     expect(parseBRLInputToCents('1500')).toBe('150000');
     expect(parseBRLInputToCents('1500,50')).toBe('150050');
+    expect(parseBRLInputToCents('291.38')).toBe('29138');
   });
 
   it('throws for empty input', () => {

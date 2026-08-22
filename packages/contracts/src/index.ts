@@ -11,3 +11,4 @@ export * from './date-only.js';
 export * from './ledger.js';
 export * from './reports.js';
 export * from './receipt-captures.js';
+export * from './receipt-ocr-document.js';

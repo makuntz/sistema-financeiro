@@ -75,6 +75,19 @@ export default function MaisScreen() {
         </View>
       </Card>
 
+      {__DEV__ ? (
+        <Card title="Desenvolvimento">
+          <Text tone="secondary">
+            Spike ML Kit on-device. Use o app PP Planning (Development Build), não o Expo Go.
+          </Text>
+          <Button
+            label="Teste de OCR"
+            variant="secondary"
+            onPress={() => router.push('/(app)/dev/ocr-test')}
+          />
+        </Card>
+      ) : null}
+
       <Button
         label="Sair"
         variant="danger"

@@ -27,6 +27,8 @@ export type AuditEventName =
   | 'ReceiptProcessingStarted'
   | 'ReceiptProcessingCompleted'
   | 'ReceiptProcessingFailed'
+  | 'ReceiptOcrDocumentApplied'
+  | 'ReceiptItemAdded'
   | 'ReceiptCaptureUpdated'
   | 'ReceiptItemUpdated'
   | 'ReceiptItemsBulkAssigned'

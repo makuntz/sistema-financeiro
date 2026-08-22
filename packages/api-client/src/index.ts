@@ -42,6 +42,8 @@ import {
   type ReceiptItemDto,
   type ReceiptImageDto,
   type CreateReceiptCaptureRequest,
+  type CreateReceiptItemRequest,
+  type SubmitReceiptOcrDocumentRequest,
   type CreateReceiptUploadUrlRequest,
   type CreateReceiptUploadUrlResponse,
   type CompleteReceiptImageUploadRequest,
@@ -438,9 +440,30 @@ export class ApiClient {
     );
   }
 
+  /** @deprecated Legacy worker flow. Prefer submitReceiptOcrDocument for on-device OCR. */
   async processReceiptCapture(captureId: string): Promise<ReceiptCaptureDto> {
     return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}/process`, {
       method: 'POST',
+    });
+  }
+
+  async submitReceiptOcrDocument(
+    captureId: string,
+    input: SubmitReceiptOcrDocumentRequest,
+  ): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}/ocr-document`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async createReceiptItem(
+    captureId: string,
+    input: CreateReceiptItemRequest,
+  ): Promise<ReceiptCaptureDto> {
+    return this.request<ReceiptCaptureDto>(`/v1/receipt-captures/${captureId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     });
   }
 

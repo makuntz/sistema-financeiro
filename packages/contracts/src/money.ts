@@ -54,6 +54,10 @@ export function parseBRLInputToCents(input: string): string {
     throw new Error('Valor não pode ser negativo');
   }
 
+  if (/^\d+\.\d{1,2}$/.test(cleaned)) {
+    return parseBRLInputToCents(cleaned.replace('.', ','));
+  }
+
   const match = /^(\d{1,3}(?:\.\d{3})*)(?:,(\d+))?$/.exec(cleaned);
   if (!match) {
     const simpleMatch = /^(\d+)(?:,(\d+))?$/.exec(cleaned);

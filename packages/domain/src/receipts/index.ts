@@ -46,3 +46,27 @@ export {
   type ReceiptUploadUrlPort,
   type ReceiptImageLimits,
 } from './receipt-use-cases.js';
+export { SubmitReceiptOcrDocument } from './submit-receipt-ocr-document.js';
+export { AddReceiptItem } from './add-receipt-item.js';
+export {
+  PtBrRetailReceiptParser,
+  buildOcrDocumentFromLines,
+  type ReceiptOcrParser,
+} from './ocr/pt-br-retail-receipt-parser.js';
+export {
+  normalizeOcrText,
+  canonicalizeForMatching,
+  removeItemPrefixTokens,
+} from './ocr/normalize.js';
+export {
+  parseBrazilianMoneyToCents,
+  extractMoneyCandidates,
+  looksLikeMoneyText,
+} from './ocr/money-parser.js';
+export { extractPurchaseDate } from './ocr/date-parser.js';
+export {
+  getCenterX,
+  getCenterY,
+  groupLinesByRow,
+  buildSpatialContext,
+} from './ocr/spatial.js';

@@ -42,12 +42,22 @@ export class ReceiptItem {
     if (!raw) {
       throw new DomainError('RECEIPT_ITEM_INVALID', 'A descrição do item é obrigatória.');
     }
-    if (
-      input.lineTotalInCents !== undefined &&
-      input.lineTotalInCents !== null &&
-      input.lineTotalInCents <= 0n
-    ) {
-      throw new DomainError('RECEIPT_ITEM_INVALID', 'O valor do item deve ser maior que zero.');
+
+    let lineTotalInCents = input.lineTotalInCents ?? null;
+    let unitPriceInCents = input.unitPriceInCents ?? null;
+    const warnings = [...(input.warnings ?? [])];
+    let needsReview = input.needsReview ?? lineTotalInCents == null;
+
+    if (lineTotalInCents !== null && lineTotalInCents <= 0n) {
+      lineTotalInCents = null;
+      needsReview = true;
+      if (!warnings.includes('Valor não identificado.')) {
+        warnings.push('Valor não identificado.');
+      }
+    }
+
+    if (unitPriceInCents !== null && unitPriceInCents <= 0n) {
+      unitPriceInCents = null;
     }
 
     return new ReceiptItem({
@@ -59,12 +69,12 @@ export class ReceiptItem {
       normalizedDescription: input.normalizedDescription ?? null,
       quantity: input.quantity ?? null,
       unitOfMeasure: input.unitOfMeasure ?? null,
-      unitPriceInCents: input.unitPriceInCents ?? null,
-      lineTotalInCents: input.lineTotalInCents ?? null,
+      unitPriceInCents,
+      lineTotalInCents,
       selectedSubcategoryId: null,
       isIgnored: false,
-      needsReview: input.needsReview ?? input.lineTotalInCents == null,
-      warnings: input.warnings ?? [],
+      needsReview,
+      warnings,
       createdAt: now,
       updatedAt: now,
     });

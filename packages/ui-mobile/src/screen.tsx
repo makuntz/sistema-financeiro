@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewProps,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSemanticTokens } from './theme';
 
@@ -18,24 +25,34 @@ export function Screen({ children, scroll = false, padded = true, style, ...prop
       style={[styles.safe, { backgroundColor: tokens.background.default }]}
       edges={['top', 'left', 'right']}
     >
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, padded && styles.padded, style]}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View {...props} style={contentStyle}>
-          {children}
-        </View>
-      )}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, padded && styles.padded, style]}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            nestedScrollEnabled
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View {...props} style={contentStyle}>
+            {children}
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
+    flex: 1,
+  },
+  flex: {
     flex: 1,
   },
   scrollContent: {

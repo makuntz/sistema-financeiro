@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ReceiptExtractionResult } from '@pp-planning/contracts';
 import { DomainError } from '../shared/domain-error.js';
+import { validateExtractionResult, normalizeExtractedMoneyInCents } from './receipt-extractor.js';
 import { ReceiptCapture } from './receipt-capture.js';
 import { ReceiptItem } from './receipt-item.js';
 import type {
@@ -291,6 +292,7 @@ export class ApplyExtractionResult {
     workspaceId: string;
     result: ReceiptExtractionResult;
     extractionVersion?: string | null;
+    extractionProvider?: string | null;
   }): Promise<{ capture: ReceiptCapture; items: ReceiptItem[] }> {
     const capture = await this.captures.findById(input.captureId, input.workspaceId);
     if (!capture) {
@@ -298,8 +300,20 @@ export class ApplyExtractionResult {
     }
 
     const now = new Date();
-    const domainItems = input.result.items.map((item) =>
-      ReceiptItem.create({
+    const domainItems = input.result.items.map((item) => {
+      const lineTotalInCents = normalizeExtractedMoneyInCents(item.lineTotalInCents);
+      const unitPriceInCents = normalizeExtractedMoneyInCents(item.unitPriceInCents);
+      const warnings = [...item.warnings];
+      let needsReview = item.needsReview;
+
+      if (item.lineTotalInCents != null && lineTotalInCents == null) {
+        needsReview = true;
+        if (!warnings.includes('Valor não identificado.')) {
+          warnings.push('Valor não identificado.');
+        }
+      }
+
+      return ReceiptItem.create({
         id: randomUUID(),
         workspaceId: input.workspaceId,
         receiptCaptureId: input.captureId,
@@ -308,13 +322,13 @@ export class ApplyExtractionResult {
         normalizedDescription: item.normalizedDescription ?? null,
         quantity: item.quantity ?? null,
         unitOfMeasure: item.unitOfMeasure ?? null,
-        unitPriceInCents: item.unitPriceInCents != null ? BigInt(item.unitPriceInCents) : null,
-        lineTotalInCents: item.lineTotalInCents != null ? BigInt(item.lineTotalInCents) : null,
-        needsReview: item.needsReview,
-        warnings: item.warnings,
+        unitPriceInCents: unitPriceInCents != null ? BigInt(unitPriceInCents) : null,
+        lineTotalInCents: lineTotalInCents != null ? BigInt(lineTotalInCents) : null,
+        needsReview,
+        warnings,
         now,
-      }),
-    );
+      });
+    });
 
     await this.items.replaceCaptureItems(input.captureId, input.workspaceId, domainItems);
 
@@ -325,6 +339,7 @@ export class ApplyExtractionResult {
         totalAmountInCents:
           input.result.totalAmountInCents != null ? BigInt(input.result.totalAmountInCents) : null,
         extractionVersion: input.extractionVersion ?? null,
+        extractionProvider: input.extractionProvider ?? null,
       },
       now,
     );

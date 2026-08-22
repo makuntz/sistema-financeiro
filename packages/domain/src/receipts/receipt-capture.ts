@@ -4,7 +4,7 @@ export type ReceiptCaptureStatus =
   'draft' | 'uploaded' | 'processing' | 'review' | 'confirmed' | 'failed' | 'canceled';
 
 const ALLOWED: Record<ReceiptCaptureStatus, readonly ReceiptCaptureStatus[]> = {
-  draft: ['uploaded'],
+  draft: ['uploaded', 'processing'],
   uploaded: ['processing'],
   processing: ['review', 'failed'],
   review: ['processing', 'confirmed', 'canceled'],
@@ -140,12 +140,24 @@ export class ReceiptCapture {
     };
   }
 
+  prepareForOcrExtraction(now: Date = new Date()): void {
+    if (this.props.status !== 'draft' && this.props.status !== 'failed') {
+      throw new DomainError(
+        'RECEIPT_CAPTURE_INVALID_STATUS',
+        'Somente capturas em rascunho ou com falha podem receber OCR.',
+        { status: this.props.status },
+      );
+    }
+    this.startProcessing(now);
+  }
+
   markReview(
     input: {
       merchantName: string | null;
       purchaseDate: string | null;
       totalAmountInCents: bigint | null;
       extractionVersion?: string | null;
+      extractionProvider?: string | null;
     },
     now: Date = new Date(),
   ): void {
@@ -156,6 +168,7 @@ export class ReceiptCapture {
       purchaseDate: input.purchaseDate,
       totalAmountInCents: input.totalAmountInCents,
       extractionVersion: input.extractionVersion ?? this.props.extractionVersion,
+      extractionProvider: input.extractionProvider ?? this.props.extractionProvider,
       processingCompletedAt: now,
       updatedAt: now,
     };

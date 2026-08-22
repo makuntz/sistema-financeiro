@@ -63,6 +63,7 @@ export function createRawApiClient(options: Partial<ApiClientOptions> = {}): Api
   });
 }
 
+/** @deprecated Legacy storage/worker flow. Prefer on-device OCR via submitReceiptOcrDocument. */
 export async function uploadReceiptImage(
   captureId: string,
   image: { uri: string; mimeType: 'image/jpeg' | 'image/png'; sizeInBytes: number },

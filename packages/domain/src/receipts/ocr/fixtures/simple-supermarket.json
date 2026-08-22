@@ -1,0 +1,67 @@
+{
+  "engine": "google_mlkit_text_recognition_v2",
+  "engineVersion": null,
+  "platform": "android",
+  "pages": [
+    {
+      "width": 400,
+      "height": 320,
+      "blocks": [
+        {
+          "text": "SUPERMERCADO EXEMPLO\nDESCRICAO\n01 7890000000001 AGUA MINERAL 1,5L 4,50\nVALOR TOTAL R$ 4,50",
+          "frame": { "left": 0, "top": 0, "right": 400, "bottom": 320 },
+          "lines": [
+            {
+              "text": "SUPERMERCADO EXEMPLO",
+              "frame": { "left": 10, "top": 10, "right": 390, "bottom": 34 },
+              "elements": [
+                {
+                  "text": "SUPERMERCADO EXEMPLO",
+                  "frame": { "left": 10, "top": 10, "right": 390, "bottom": 34 }
+                }
+              ]
+            },
+            {
+              "text": "DESCRICAO",
+              "frame": { "left": 10, "top": 34, "right": 390, "bottom": 58 },
+              "elements": [
+                {
+                  "text": "DESCRICAO",
+                  "frame": { "left": 10, "top": 34, "right": 390, "bottom": 58 }
+                }
+              ]
+            },
+            {
+              "text": "01 7890000000001 AGUA MINERAL 1,5L 4,50",
+              "frame": { "left": 10, "top": 58, "right": 390, "bottom": 82 },
+              "elements": [
+                {
+                  "text": "01 7890000000001 AGUA MINERAL 1,5L",
+                  "frame": { "left": 10, "top": 58, "right": 260, "bottom": 82 }
+                },
+                {
+                  "text": "4,50",
+                  "frame": { "left": 272, "top": 58, "right": 390, "bottom": 82 }
+                }
+              ]
+            },
+            {
+              "text": "VALOR TOTAL R$ 4,50",
+              "frame": { "left": 10, "top": 250, "right": 390, "bottom": 274 },
+              "elements": [
+                {
+                  "text": "VALOR TOTAL R$",
+                  "frame": { "left": 10, "top": 250, "right": 260, "bottom": 274 }
+                },
+                {
+                  "text": "4,50",
+                  "frame": { "left": 272, "top": 250, "right": 390, "bottom": 274 }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
