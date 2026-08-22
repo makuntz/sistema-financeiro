@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { TextInput, Text, View, StyleSheet, type TextInputProps } from 'react-native';
 import { useSemanticTokens } from './theme';
 
@@ -5,14 +6,23 @@ export type InputProps = TextInputProps & {
   label: string;
 };
 
-export function Input({ label, style, ...props }: InputProps) {
+export const Input = forwardRef<TextInput, InputProps>(function Input(
+  { label, style, editable = true, ...props },
+  ref,
+) {
   const tokens = useSemanticTokens();
 
   return (
     <View style={styles.wrapper}>
       <Text style={[styles.label, { color: tokens.text.secondary }]}>{label}</Text>
       <TextInput
+        ref={ref}
         {...props}
+        editable={editable}
+        autoComplete="off"
+        autoCorrect={false}
+        importantForAutofill="no"
+        showSoftInputOnFocus={props.showSoftInputOnFocus ?? true}
         placeholderTextColor={tokens.text.secondary}
         style={[
           styles.input,
@@ -26,7 +36,7 @@ export function Input({ label, style, ...props }: InputProps) {
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrapper: {

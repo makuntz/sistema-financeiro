@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Button, Screen, Text } from '@pp-planning/ui-mobile';
-import { apiClient, uploadReceiptImage } from '@/src/lib/api';
-import { preprocessReceiptImage } from '@/src/lib/image-preprocess';
+import { apiClient } from '@/src/lib/api';
+import { isExpoGo } from '@/src/lib/runtime-environment';
+import type { ReceiptTextRecognizer } from '@/src/ocr/mlkit-receipt-text-recognizer';
 
 export default function CameraScreen() {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const expoGo = isExpoGo();
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -20,18 +22,31 @@ export default function CameraScreen() {
     }
   }, [permission, requestPermission]);
 
-  async function handleUsePhoto(uri: string) {
-    setUploading(true);
+  async function handleReadReceipt(uri: string) {
+    if (expoGo) {
+      setError('O OCR local exige o Development Build PP Planning. O Expo Go não suporta ML Kit.');
+      return;
+    }
+
+    setProcessing(true);
     setError(null);
+
     try {
-      const processed = await preprocessReceiptImage(uri);
-      const capture = await apiClient.createReceiptCapture({});
-      await uploadReceiptImage(capture.id, processed);
-      await apiClient.processReceiptCapture(capture.id);
-      router.replace(`/(app)/capturas/${capture.id}/processando`);
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require('@/src/ocr/load-mlkit-recognizer.native') as {
+        loadMlKitReceiptTextRecognizer: () => ReceiptTextRecognizer;
+      };
+      const recognizer = mod.loadMlKitReceiptTextRecognizer();
+      const { document } = await recognizer.recognize(uri);
+
+      const capture = await apiClient.createReceiptCapture({
+        extractionProvider: 'mlkit',
+      });
+      const reviewed = await apiClient.submitReceiptOcrDocument(capture.id, { document });
+      router.replace(`/(app)/capturas/${reviewed.id}/conferir`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao enviar a nota');
-      setUploading(false);
+      setError(err instanceof Error ? err.message : 'Falha ao ler a nota');
+      setProcessing(false);
     }
   }
 
@@ -82,16 +97,19 @@ export default function CameraScreen() {
     return (
       <Screen scroll>
         <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
+        <Text tone="secondary">
+          A foto permanece no aparelho. Somente o texto reconhecido é enviado à API.
+        </Text>
         {error ? <Text tone="danger">{error}</Text> : null}
         <Button
-          label={uploading ? 'Enviando...' : 'Usar foto'}
-          disabled={uploading}
-          onPress={() => void handleUsePhoto(previewUri)}
+          label={processing ? 'Lendo nota...' : 'Ler nota'}
+          disabled={processing || expoGo}
+          onPress={() => void handleReadReceipt(previewUri)}
         />
         <Button
           label="Tirar outra"
           variant="secondary"
-          disabled={uploading}
+          disabled={processing}
           onPress={() => {
             setPreviewUri(null);
             setError(null);
@@ -105,6 +123,9 @@ export default function CameraScreen() {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
       <View style={styles.controls}>
+        <Text tone="secondary" variant="caption">
+          {Platform.OS === 'android' ? 'ML Kit on-device' : 'OCR local'} · sem upload de imagem
+        </Text>
         <Button label="Capturar" onPress={() => void takePhoto()} />
         <Button label="Galeria" variant="secondary" onPress={() => void pickFromGallery()} />
       </View>
@@ -115,6 +136,10 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  devPanel: {
+    padding: 12,
+    paddingBottom: 0,
   },
   camera: {
     flex: 1,

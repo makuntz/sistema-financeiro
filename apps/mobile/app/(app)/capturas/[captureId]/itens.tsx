@@ -1,14 +1,23 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import type { ReceiptItemDto } from '@pp-planning/contracts';
-import { Button, MoneyDisplay, Screen, Text, useSemanticTokens } from '@pp-planning/ui-mobile';
+import { formatCentsToBRL } from '@pp-planning/contracts';
+import {
+  Button,
+  Input,
+  MoneyDisplay,
+  MoneyInput,
+  Screen,
+  Text,
+  useSemanticTokens,
+} from '@pp-planning/ui-mobile';
 import { SubcategoryPicker } from '@/src/components/subcategory-picker';
 import { apiClient } from '@/src/lib/api';
 import { useCategories } from '@/src/hooks/use-categories';
 import { useReceiptCapture } from '@/src/hooks/use-receipt-capture';
 
-type ItemFilter = 'all' | 'pending' | 'classified' | 'ignored';
+type ItemFilter = 'all' | 'review' | 'pending' | 'classified' | 'ignored';
 
 export default function ItensScreen() {
   const { captureId } = useLocalSearchParams<{ captureId: string }>();
@@ -18,13 +27,21 @@ export default function ItensScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<ItemFilter>('all');
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [addVisible, setAddVisible] = useState(false);
   const [recentSubcategoryIds, setRecentSubcategoryIds] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [newDescription, setNewDescription] = useState('');
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newUnit, setNewUnit] = useState('');
+  const [newUnitPrice, setNewUnitPrice] = useState('0');
+  const [newLineTotal, setNewLineTotal] = useState('0');
 
   const filteredItems = useMemo(() => {
     const items = capture?.items ?? [];
     switch (filter) {
+      case 'review':
+        return items.filter((item) => item.needsReview && !item.isIgnored);
       case 'pending':
         return items.filter((item) => !item.isIgnored && !item.selectedSubcategoryId);
       case 'classified':
@@ -82,12 +99,53 @@ export default function ItensScreen() {
     }
   }
 
+  async function handleAddItem() {
+    if (!captureId || !newDescription.trim()) {
+      return;
+    }
+    setWorking(true);
+    setActionError(null);
+    try {
+      await apiClient.createReceiptItem(captureId, {
+        rawDescription: newDescription.trim(),
+        quantity: newQuantity.trim() || null,
+        unitOfMeasure: newUnit.trim() || null,
+        unitPriceInCents: newUnitPrice === '0' ? null : newUnitPrice,
+        lineTotalInCents: newLineTotal === '0' ? null : newLineTotal,
+      });
+      setAddVisible(false);
+      setNewDescription('');
+      setNewQuantity('');
+      setNewUnit('');
+      setNewUnitPrice('0');
+      setNewLineTotal('0');
+      await reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Erro ao adicionar item');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  function renderQuantity(item: ReceiptItemDto): string | null {
+    if (!item.quantity) {
+      return null;
+    }
+    const unit = item.unitOfMeasure ? ` ${item.unitOfMeasure.toLowerCase()}` : '';
+    return `${item.quantity}${unit}`;
+  }
+
   function renderItem({ item }: { item: ReceiptItemDto }) {
     const selected = selectedIds.includes(item.id);
+    const quantityLabel = renderQuantity(item);
+
     return (
       <Pressable
         accessibilityRole="button"
         onPress={() => toggleSelection(item.id)}
+        onLongPress={() =>
+          router.push(`/(app)/capturas/${captureId}/itens/${item.id}` as Href)
+        }
         style={[
           styles.itemRow,
           {
@@ -98,17 +156,37 @@ export default function ItensScreen() {
       >
         <View style={styles.itemMeta}>
           <Text>{item.rawDescription}</Text>
+          {quantityLabel ? (
+            <Text tone="secondary" variant="caption">
+              Quantidade: {quantityLabel}
+            </Text>
+          ) : null}
+          {item.unitPriceInCents ? (
+            <Text tone="secondary" variant="caption">
+              Preço unitário: {formatCentsToBRL(item.unitPriceInCents)}
+              {item.unitOfMeasure ? `/${item.unitOfMeasure.toLowerCase()}` : ''}
+            </Text>
+          ) : null}
           <Text tone="secondary" variant="caption">
             {item.isIgnored
               ? 'Ignorado'
               : item.selectedSubcategoryName
                 ? `${item.selectedCategoryName} · ${item.selectedSubcategoryName}`
-                : 'Pendente'}
+                : 'Subcategoria: Pendente'}
           </Text>
+          {item.needsReview && !item.isIgnored ? (
+            <Text tone="danger" variant="caption">
+              Revisar
+            </Text>
+          ) : null}
         </View>
         {item.lineTotalInCents ? (
           <MoneyDisplay cents={item.lineTotalInCents} tone="expense" />
-        ) : null}
+        ) : (
+          <Text tone="danger" variant="caption">
+            Sem valor
+          </Text>
+        )}
       </Pressable>
     );
   }
@@ -127,13 +205,13 @@ export default function ItensScreen() {
         <Text variant="title">Itens</Text>
         <Text tone="secondary">
           {capture?.classifiedItemCount ?? 0} classificados · {capture?.ignoredItemCount ?? 0}{' '}
-          ignorados
+          ignorados · diferença {formatCentsToBRL(capture?.totalDifferenceInCents ?? '0')}
         </Text>
         {error ? <Text tone="danger">{error}</Text> : null}
         {actionError ? <Text tone="danger">{actionError}</Text> : null}
 
         <View style={styles.filters}>
-          {(['all', 'pending', 'classified', 'ignored'] as ItemFilter[]).map((value) => (
+          {(['all', 'review', 'pending', 'classified', 'ignored'] as ItemFilter[]).map((value) => (
             <Pressable
               key={value}
               accessibilityRole="button"
@@ -148,11 +226,13 @@ export default function ItensScreen() {
               <Text variant="caption">
                 {value === 'all'
                   ? 'Todos'
-                  : value === 'pending'
-                    ? 'Pendentes'
-                    : value === 'classified'
-                      ? 'Classificados'
-                      : 'Ignorados'}
+                  : value === 'review'
+                    ? 'Revisar'
+                    : value === 'pending'
+                      ? 'Pendentes'
+                      : value === 'classified'
+                        ? 'Classificados'
+                        : 'Ignorados'}
               </Text>
             </Pressable>
           ))}
@@ -169,8 +249,9 @@ export default function ItensScreen() {
 
       <View style={styles.footer}>
         <Text tone="secondary" variant="caption">
-          {selectedIds.length} selecionado(s)
+          {selectedIds.length} selecionado(s) · pressione e segure para editar
         </Text>
+        <Button label="Adicionar item" variant="secondary" onPress={() => setAddVisible(true)} />
         <Button
           label="Classificar selecionados"
           disabled={selectedIds.length === 0 || working}
@@ -197,6 +278,23 @@ export default function ItensScreen() {
         recentSubcategoryIds={recentSubcategoryIds}
         onSelect={(subcategoryId) => void bulkAssign(subcategoryId)}
       />
+
+      <Modal visible={addVisible} animationType="slide" onRequestClose={() => setAddVisible(false)}>
+        <Screen scroll>
+          <Text variant="title">Adicionar item</Text>
+          <Input label="Descrição" value={newDescription} onChangeText={setNewDescription} />
+          <Input label="Quantidade (opcional)" value={newQuantity} onChangeText={setNewQuantity} />
+          <Input label="Unidade (opcional)" value={newUnit} onChangeText={setNewUnit} />
+          <MoneyInput
+            label="Preço unitário (opcional)"
+            cents={newUnitPrice}
+            onChangeCents={setNewUnitPrice}
+          />
+          <MoneyInput label="Valor" cents={newLineTotal} onChangeCents={setNewLineTotal} />
+          <Button label="Salvar item" disabled={working} onPress={() => void handleAddItem()} />
+          <Button label="Cancelar" variant="secondary" onPress={() => setAddVisible(false)} />
+        </Screen>
+      </Modal>
     </Screen>
   );
 }

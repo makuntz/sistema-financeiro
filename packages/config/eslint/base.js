@@ -13,6 +13,8 @@ export default [
       '**/node_modules/**',
       '**/.turbo/**',
       '**/.expo/**',
+      '**/android/**',
+      '**/ios/**',
       '**/next-env.d.ts',
       '**/babel.config.js',
       '**/metro.config.js',

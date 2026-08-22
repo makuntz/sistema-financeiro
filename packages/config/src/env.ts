@@ -23,7 +23,7 @@ const envSchema = z
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
     HOST: z.string().default('0.0.0.0'),
-    RECEIPT_EXTRACTOR_PROVIDER: z.enum(['fake']).default('fake'),
+    RECEIPT_EXTRACTOR_PROVIDER: z.enum(['fake', 'mlkit']).default('fake'),
     RECEIPT_PROCESSING_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
     RECEIPT_PROCESSING_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(60),
     RECEIPT_IMAGE_MAX_SIZE_BYTES: z.coerce.number().int().positive().default(10_485_760),

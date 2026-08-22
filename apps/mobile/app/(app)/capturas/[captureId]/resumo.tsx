@@ -80,6 +80,11 @@ export default function ResumoScreen() {
       {successMessage ? <Text tone="success">{successMessage}</Text> : null}
 
       <Card title="Totais">
+        {!capture?.totalAmountInCents ? (
+          <Text tone="danger">
+            Informe o total da nota na tela Conferir (ex.: 291,38) antes de confirmar.
+          </Text>
+        ) : null}
         <View style={styles.row}>
           <Text tone="secondary">Total da nota</Text>
           {capture?.totalAmountInCents ? (
@@ -120,6 +125,11 @@ export default function ResumoScreen() {
 
       {capture?.status === 'review' ? (
         <>
+          <Button
+            label="Ajustar conferência"
+            variant="secondary"
+            onPress={() => router.push(`/(app)/capturas/${captureId}/conferir`)}
+          />
           <Button
             label="Ajustar itens"
             variant="secondary"

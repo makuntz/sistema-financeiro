@@ -11,6 +11,8 @@ import {
   bulkAssignReceiptItemsRequestSchema,
   bulkIgnoreReceiptItemsRequestSchema,
   confirmReceiptCaptureRequestSchema,
+  createReceiptItemRequestSchema,
+  submitReceiptOcrDocumentRequestSchema,
   receiptCaptureListQuerySchema,
   receiptCaptureDtoSchema,
   receiptConfirmationResultDtoSchema,
@@ -23,12 +25,15 @@ import {
   RequestReceiptImageUploadUrl,
   CompleteReceiptImageUpload,
   ProcessReceiptCapture,
+  ApplyExtractionResult,
   UpdateReceiptCapture,
   UpdateReceiptItem,
   ReprocessReceiptCapture,
   ConfirmReceiptCapture,
   BulkAssignReceiptItems,
   BulkIgnoreReceiptItems,
+  SubmitReceiptOcrDocument,
+  AddReceiptItem,
   DomainError,
   type ReceiptCaptureRepository,
   type ReceiptImageRepository,
@@ -110,7 +115,7 @@ async function toDto(
     totalAmountInCents: props.totalAmountInCents?.toString() ?? null,
     defaultCategoryId: props.defaultCategoryId,
     defaultCategoryName: enriched.defaultCategoryName,
-    extractionProvider: props.extractionProvider as 'fake',
+    extractionProvider: props.extractionProvider as 'fake' | 'mlkit',
     extractionVersion: props.extractionVersion,
     processingStartedAt: props.processingStartedAt?.toISOString() ?? null,
     processingCompletedAt: props.processingCompletedAt?.toISOString() ?? null,
@@ -231,6 +236,9 @@ export async function registerReceiptRoutes(
     deps.itemRepository,
     deps.auditLogger,
   );
+  const applyExtraction = new ApplyExtractionResult(deps.captureRepository, deps.itemRepository);
+  const submitOcrDocument = new SubmitReceiptOcrDocument(deps.captureRepository, applyExtraction);
+  const addReceiptItem = new AddReceiptItem(deps.captureRepository, deps.itemRepository);
 
   const readGuard = [
     deps.authenticate,
@@ -266,7 +274,7 @@ export async function registerReceiptRoutes(
         userId,
         defaultCategoryId: body.defaultCategoryId,
         fakeScenario: body.fakeScenario,
-        extractionProvider: deps.env.RECEIPT_EXTRACTOR_PROVIDER,
+        extractionProvider: body.extractionProvider ?? deps.env.RECEIPT_EXTRACTOR_PROVIDER,
       });
 
       await deps.auditLogger.record({
@@ -508,6 +516,106 @@ export async function registerReceiptRoutes(
 
       const dto = await fetchEnrichedDto(deps, captureId, workspaceId);
       return reply.send(dto);
+    },
+  );
+
+  app.post(
+    '/v1/receipt-captures/:captureId/ocr-document',
+    {
+      schema: {
+        tags: ['Receipts'],
+        security: [{ BearerAuth: [] }],
+        params: captureParamsSchema,
+        body: submitReceiptOcrDocumentRequestSchema,
+        response: { 200: receiptCaptureDtoSchema },
+      },
+      preHandler: writeGuard,
+    },
+    async (request, reply) => {
+      const { captureId } = captureParamsSchema.parse(request.params);
+      const body = submitReceiptOcrDocumentRequestSchema.parse(request.body);
+      const workspaceId = request.workspace!.workspaceId;
+      const userId = request.auth!.userId;
+
+      const result = await submitOcrDocument.execute({
+        captureId,
+        workspaceId,
+        document: body.document,
+      });
+
+      await deps.auditLogger.record({
+        name: 'ReceiptOcrDocumentApplied',
+        actorUserId: userId,
+        workspaceId,
+        occurredAt: new Date(),
+        payload: {
+          captureId,
+          lineCount: body.document.pages.reduce<number>(
+            (count, page) =>
+              count +
+              page.blocks.reduce<number>(
+                (blockCount, block) => blockCount + block.lines.length,
+                0,
+              ),
+            0,
+          ),
+          itemCount: result.items.length,
+          reviewCount: result.items.filter((item) => item.needsReview).length,
+          parserDurationMs: result.parserDurationMs,
+          status: result.capture.status,
+        },
+      });
+
+      const dto = await fetchEnrichedDto(deps, captureId, workspaceId);
+      return reply.send(dto);
+    },
+  );
+
+  app.post(
+    '/v1/receipt-captures/:captureId/items',
+    {
+      schema: {
+        tags: ['Receipts'],
+        security: [{ BearerAuth: [] }],
+        params: captureParamsSchema,
+        body: createReceiptItemRequestSchema,
+        response: { 201: receiptCaptureDtoSchema },
+      },
+      preHandler: writeGuard,
+    },
+    async (request, reply) => {
+      const { captureId } = captureParamsSchema.parse(request.params);
+      const body = createReceiptItemRequestSchema.parse(request.body);
+      const workspaceId = request.workspace!.workspaceId;
+      const userId = request.auth!.userId;
+      const itemId = randomUUID();
+
+      await addReceiptItem.execute({
+        captureId,
+        workspaceId,
+        itemId,
+        rawDescription: body.rawDescription,
+        normalizedDescription: body.normalizedDescription ?? null,
+        quantity: body.quantity ?? null,
+        unitOfMeasure: body.unitOfMeasure ?? null,
+        unitPriceInCents:
+          body.unitPriceInCents != null ? BigInt(body.unitPriceInCents) : body.unitPriceInCents,
+        lineTotalInCents:
+          body.lineTotalInCents != null ? BigInt(body.lineTotalInCents) : body.lineTotalInCents,
+        selectedSubcategoryId: body.selectedSubcategoryId ?? null,
+        needsReview: body.needsReview,
+      });
+
+      await deps.auditLogger.record({
+        name: 'ReceiptItemAdded',
+        actorUserId: userId,
+        workspaceId,
+        occurredAt: new Date(),
+        payload: { captureId, itemId },
+      });
+
+      const dto = await fetchEnrichedDto(deps, captureId, workspaceId);
+      return reply.status(201).send(dto);
     },
   );
 

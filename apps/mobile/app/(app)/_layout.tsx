@@ -42,6 +42,9 @@ export default function AppLayout() {
       <Stack.Screen name="capturas/[captureId]/itens" options={{ title: 'Itens da nota' }} />
       <Stack.Screen name="capturas/[captureId]/resumo" options={{ title: 'Resumo' }} />
       <Stack.Screen name="lancamentos/novo" options={{ title: 'Novo lançamento' }} />
+      {__DEV__ ? (
+        <Stack.Screen name="dev/ocr-test" options={{ title: 'Teste de OCR' }} />
+      ) : null}
     </Stack>
   );
 }

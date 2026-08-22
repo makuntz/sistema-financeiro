@@ -134,6 +134,21 @@ export function validateExtractionResult(raw: unknown): ReceiptExtractionResult 
   return parsed.data;
 }
 
+export function normalizeExtractedMoneyInCents(
+  value: string | null | undefined,
+): string | null {
+  if (value == null || value === '') {
+    return null;
+  }
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  if (BigInt(value) <= 0n) {
+    return null;
+  }
+  return value;
+}
+
 export class FakeReceiptExtractor implements ReceiptExtractor {
   async extract(input: ReceiptExtractionInput): Promise<ReceiptExtractionResult> {
     const scenario = input.fakeScenario ?? 'success';

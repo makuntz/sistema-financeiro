@@ -15,9 +15,19 @@
       "adaptiveIcon": {
         "backgroundColor": "#0F766E"
       },
-      "package": "com.ppplanning.app"
+      "package": "com.ppplanning.app",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
+      "expo-dev-client",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
       "expo-router",
       [
         "expo-camera",

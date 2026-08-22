@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
 import { TextInput, Text, View, StyleSheet, type TextInputProps } from 'react-native';
-import { formatCentsToBRL, parseBRLInputToCents } from '@pp-planning/contracts';
+import { formatCentsToBRL } from '@pp-planning/contracts';
 import { useSemanticTokens } from './theme';
 
 export type MoneyInputProps = Omit<TextInputProps, 'value' | 'onChangeText'> & {
@@ -9,39 +8,38 @@ export type MoneyInputProps = Omit<TextInputProps, 'value' | 'onChangeText'> & {
   onChangeCents: (cents: string) => void;
 };
 
-function formatDisplayValue(cents: string): string {
-  if (!cents || cents === '0') {
-    return '';
-  }
-
+function formatInputValue(cents: string): string {
   try {
-    return formatCentsToBRL(cents);
+    return formatCentsToBRL(cents || '0');
   } catch {
-    return '';
+    return 'R$ 0,00';
   }
+}
+
+function parseDigitsToCents(text: string): string {
+  const digits = text.replace(/\D/g, '');
+  if (!digits) {
+    return '0';
+  }
+  return digits.replace(/^0+/, '') || '0';
 }
 
 export function MoneyInput({ label, cents, onChangeCents, style, ...props }: MoneyInputProps) {
   const tokens = useSemanticTokens();
-  const displayValue = useMemo(() => formatDisplayValue(cents), [cents]);
+  const displayValue = formatInputValue(cents);
 
   return (
     <View style={styles.wrapper}>
       <Text style={[styles.label, { color: tokens.text.secondary }]}>{label}</Text>
       <TextInput
         {...props}
-        keyboardType="numeric"
+        keyboardType="number-pad"
+        inputMode="numeric"
         placeholder="R$ 0,00"
         placeholderTextColor={tokens.text.secondary}
         value={displayValue}
         onChangeText={(text) => {
-          try {
-            onChangeCents(parseBRLInputToCents(text));
-          } catch {
-            if (!text.trim()) {
-              onChangeCents('0');
-            }
-          }
+          onChangeCents(parseDigitsToCents(text));
         }}
         style={[
           styles.input,

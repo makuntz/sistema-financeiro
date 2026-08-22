@@ -25,7 +25,7 @@ export const receiptProcessingJobStatusSchema = z.enum([
 ]);
 export type ReceiptProcessingJobStatus = z.infer<typeof receiptProcessingJobStatusSchema>;
 
-export const receiptExtractorProviderSchema = z.enum(['fake']);
+export const receiptExtractorProviderSchema = z.enum(['fake', 'mlkit']);
 export type ReceiptExtractorProvider = z.infer<typeof receiptExtractorProviderSchema>;
 
 export const receiptFakeScenarioSchema = z.enum([
@@ -160,6 +160,7 @@ export const createReceiptCaptureRequestSchema = z
   .object({
     defaultCategoryId: z.string().uuid().optional(),
     fakeScenario: receiptFakeScenarioSchema.optional(),
+    extractionProvider: receiptExtractorProviderSchema.optional(),
   })
   .strict();
 export type CreateReceiptCaptureRequest = z.infer<typeof createReceiptCaptureRequestSchema>;
@@ -229,6 +230,20 @@ export const bulkIgnoreReceiptItemsRequestSchema = z
   .strict();
 export type BulkIgnoreReceiptItemsRequest = z.infer<typeof bulkIgnoreReceiptItemsRequestSchema>;
 
+export const createReceiptItemRequestSchema = z
+  .object({
+    rawDescription: z.string().min(1).max(500),
+    normalizedDescription: z.string().max(500).nullable().optional(),
+    quantity: z.string().max(64).nullable().optional(),
+    unitOfMeasure: z.string().max(32).nullable().optional(),
+    unitPriceInCents: MoneyInCentsSchema.nullable().optional(),
+    lineTotalInCents: MoneyInCentsSchema.nullable().optional(),
+    selectedSubcategoryId: z.string().uuid().nullable().optional(),
+    needsReview: z.boolean().optional(),
+  })
+  .strict();
+export type CreateReceiptItemRequest = z.infer<typeof createReceiptItemRequestSchema>;
+
 export const confirmReceiptCaptureRequestSchema = z
   .object({
     competenceYear: z.number().int().min(2000).max(2100).optional(),
@@ -291,6 +306,11 @@ export const receiptCaptureErrorCodes = [
   'RECEIPT_EXTRACTOR_INVALID_RESPONSE',
   'RECEIPT_EXTRACTOR_NOT_CONFIGURED',
   'RECEIPT_JOB_MAX_ATTEMPTS_REACHED',
+  'RECEIPT_OCR_DOCUMENT_INVALID',
+  'RECEIPT_OCR_NO_TEXT',
+  'RECEIPT_OCR_NO_ITEMS',
+  'RECEIPT_OCR_ALREADY_APPLIED',
+  'RECEIPT_PARSER_FAILED',
 ] as const;
 
 export type ReceiptCaptureErrorCode = (typeof receiptCaptureErrorCodes)[number];
