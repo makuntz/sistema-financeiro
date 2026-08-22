@@ -8,11 +8,18 @@ import {
   stripTaxStatusTokens,
 } from './money-parser.js';
 import { extractPurchaseDate } from './date-parser.js';
-import { getCenterY, groupLinesByRow } from './spatial.js';
 import {
   PtBrRetailReceiptParser,
   buildOcrDocumentFromLines,
 } from './pt-br-retail-receipt-parser.js';
+import {
+  buildVilaRicaSupermarketDocument,
+  VILA_RICA_EXPECTED_TOTALS,
+} from './fixtures/build-vila-rica-document.js';
+import { getCenterY, groupLinesByRow } from './spatial.js';
+import { buildVisualRows } from './visual-rows.js';
+import { detectItemTableHeader } from './header-detection.js';
+import { buildColumnLayoutFromHeader } from './columns.js';
 
 describe('ocr normalize', () => {
   it('normalizes unicode and spaces', () => {
@@ -334,5 +341,190 @@ describe('PtBrRetailReceiptParser', () => {
     ]);
 
     expect(() => parser.parse(document)).toThrow(/produtos desta nota/);
+  });
+
+  it('never turns SQ.CODIGO DESCRICAO header into an item', () => {
+    const document = buildOcrDocumentFromLines(
+      [
+        { text: 'VILA RICA SUPERMERCADOS' },
+        {
+          parts: [
+            { text: 'SQ.CODIGO', xStart: 10, xEnd: 80 },
+            { text: 'DESCRICAO', xStart: 180, xEnd: 320 },
+          ],
+          y: 100,
+        },
+        {
+          parts: [
+            { text: 'QTD', xStart: 620, xEnd: 680 },
+            { text: 'VL.UNIT', xStart: 720, xEnd: 800 },
+            { text: 'ST', xStart: 820, xEnd: 860 },
+            { text: 'TOTAL', xStart: 900, xEnd: 980 },
+          ],
+          y: 102,
+        },
+        {
+          parts: [
+            { text: '01', xStart: 10, xEnd: 40 },
+            { text: '07897123884029 AGUA MIN PRATA 1,270', xStart: 60, xEnd: 320 },
+            { text: '1 UN', xStart: 620, xEnd: 680 },
+            { text: '7,99', xStart: 720, xEnd: 780 },
+            { text: 'T10', xStart: 820, xEnd: 860 },
+            { text: '7,99', xStart: 900, xEnd: 980 },
+          ],
+          y: 130,
+        },
+        { text: 'QTD. TOTAL DE ITENS', y: 300, parts: [{ text: 'QTD. TOTAL DE ITENS', xStart: 10, xEnd: 260 }, { text: '024', xStart: 700, xEnd: 760 }] },
+        { text: 'VALOR TOTAL (R$)', y: 324 },
+        { text: '291,38', y: 326, parts: [{ text: '291,38', xStart: 700, xEnd: 780 }] },
+      ],
+      { pageWidth: 1000, lineHeight: 22 },
+    );
+
+    const result = parser.parse(document);
+    expect(result.items.some((item) => item.rawDescription.includes('SQ.CODIGO'))).toBe(false);
+    expect(result.items[0]?.lineTotalInCents).toBe('799');
+  });
+
+  it('reconstructs fragmented header columns by Y proximity', () => {
+    const document = buildOcrDocumentFromLines(
+      [
+        {
+          parts: [
+            { text: 'SQ.CODIGO', xStart: 10, xEnd: 80 },
+            { text: 'DESCRICAO', xStart: 180, xEnd: 320 },
+          ],
+          y: 100,
+        },
+        {
+          parts: [
+            { text: 'QTD', xStart: 620, xEnd: 680 },
+            { text: 'VL.UNIT', xStart: 720, xEnd: 800 },
+            { text: 'ST', xStart: 820, xEnd: 860 },
+            { text: 'TOTAL', xStart: 900, xEnd: 980 },
+          ],
+          y: 101,
+        },
+      ],
+      { pageWidth: 1000, lineHeight: 22 },
+    );
+
+    const visual = buildVisualRows(document);
+    const header = detectItemTableHeader(visual.rows, visual.rowToleranceY);
+    const layout = header ? buildColumnLayoutFromHeader(header, visual.pageWidth) : null;
+
+    expect(header?.detectedKinds).toEqual(
+      expect.arrayContaining(['description', 'quantity', 'unitPrice', 'tax', 'total']),
+    );
+    expect(layout?.totalBand?.normalizedCenterX).toBeGreaterThan(0.85);
+    expect(layout?.unitPriceBand?.normalizedCenterX).toBeGreaterThan(0.7);
+  });
+
+  it('extracts fragmented VALOR TOTAL label and value by Y proximity', () => {
+    const document = buildOcrDocumentFromLines(
+      [
+        { text: 'DESCRICAO QTD VL UNIT ST TOTAL' },
+        { text: '01 AGUA MIN PRATA 1 UN 7,99 T10', rightText: '7,99' },
+        { text: 'QTD. TOTAL DE ITENS', y: 200, parts: [{ text: 'QTD. TOTAL DE ITENS', xStart: 10, xEnd: 260 }, { text: '001', xStart: 700, xEnd: 760 }] },
+        { text: 'VALOR TOTAL (R$)', y: 224 },
+        { text: '291,38', y: 225, parts: [{ text: '291,38', xStart: 700, xEnd: 780 }] },
+      ],
+      { pageWidth: 1000, lineHeight: 22 },
+    );
+
+    const result = parser.parse(document);
+    expect(result.totalAmountInCents).toBe('29138');
+  });
+
+  it('finds table header below long fiscal preamble', () => {
+    const lines: Array<{
+      text: string;
+      y?: number;
+      rightText?: string;
+      parts?: Array<{ text: string; xStart: number; xEnd: number }>;
+    }> = [];
+    for (let index = 0; index < 70; index += 1) {
+      lines.push({ text: `DADO FISCAL ${index}`, y: index * 18 });
+    }
+    lines.push({ text: 'SQ.CODIGO DESCRICAO', y: 70 * 18 });
+    lines.push({
+      text: 'QTD VL.UNIT ST TOTAL',
+      y: 70 * 18 + 2,
+      parts: [
+        { text: 'QTD', xStart: 620, xEnd: 680 },
+        { text: 'VL.UNIT', xStart: 720, xEnd: 800 },
+        { text: 'ST', xStart: 820, xEnd: 860 },
+        { text: 'TOTAL', xStart: 900, xEnd: 980 },
+      ],
+    });
+    lines.push({
+      text: '01 07897123884029 AGUA MIN PRATA 1 UN 7,99 T10',
+      rightText: '7,99',
+      y: 70 * 18 + 30,
+    });
+    lines.push({
+      text: 'QTD. TOTAL DE ITENS',
+      y: 70 * 18 + 60,
+      parts: [
+        { text: 'QTD. TOTAL DE ITENS', xStart: 10, xEnd: 260 },
+        { text: '001', xStart: 700, xEnd: 760 },
+      ],
+    });
+    lines.push({ text: 'VALOR TOTAL (R$)', y: 70 * 18 + 84 });
+    lines.push({
+      text: '291,38',
+      y: 70 * 18 + 85,
+      parts: [{ text: '291,38', xStart: 700, xEnd: 780 }],
+    });
+
+    const document = buildOcrDocumentFromLines(lines, { pageWidth: 1000, lineHeight: 22 });
+    const result = parser.parse(document);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.lineTotalInCents).toBe('799');
+    expect(result.totalAmountInCents).toBe('29138');
+  });
+
+  it('parses sanitized Vila Rica ML Kit fixture', () => {
+    const document = buildVilaRicaSupermarketDocument();
+    const result = parser.parse(document);
+
+    expect(result.merchantName).toBe('VILA RICA SUPERMERCADOS');
+    expect(result.purchaseDate).toBe('2026-07-27');
+    expect(result.items).toHaveLength(24);
+    expect(result.totalAmountInCents).toBe('29138');
+    expect(result.items.some((item) => item.rawDescription.includes('SQ.CODIGO'))).toBe(false);
+
+    const totals = result.items.map((item) => item.lineTotalInCents);
+    expect(totals).toEqual([...VILA_RICA_EXPECTED_TOTALS]);
+
+    const sum = totals.reduce((acc, value) => acc + BigInt(value ?? '0'), 0n);
+    expect(sum).toBe(29138n);
+
+    expect(result.items.find((item) => item.rawDescription.includes('AGUA MIN PRATA'))?.lineTotalInCents).toBe(
+      '799',
+    );
+    expect(result.items.find((item) => item.rawDescription.includes('MUSCULO UR KG'))?.lineTotalInCents).toBe(
+      '4084',
+    );
+    expect(result.items.find((item) => item.rawDescription.includes('ALHO CHILENO KG'))?.lineTotalInCents).toBe(
+      '525',
+    );
+    expect(result.items.find((item) => item.rawDescription.includes('BATATA KG'))?.lineTotalInCents).toBe('683');
+    expect(
+      result.items.filter((item) => item.rawDescription.includes('MUSSARELA DAVACA LIGHT KG')).map(
+        (item) => item.lineTotalInCents,
+      ),
+    ).toEqual(['1053', '1255']);
+    expect(result.items.find((item) => item.rawDescription.includes('PAO FRANCES'))?.lineTotalInCents).toBe(
+      '934',
+    );
+    expect(result.items[23]?.lineTotalInCents).toBe('259');
+    expect(result.items.filter((item) => item.rawDescription.includes('SAB DOVE 90G'))).toHaveLength(4);
+    expect(
+      result.items.filter((item) => item.rawDescription.includes('SAB DOVE 90G')).every(
+        (item) => item.lineTotalInCents === '489',
+      ),
+    ).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes('24 itens'))).toBe(false);
   });
 });
