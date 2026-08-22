@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Input, MoneyInput, Screen, Text } from '@pp-planning/ui-mobile';
 import { apiClient } from '@/src/lib/api';
@@ -97,5 +97,3 @@ export default function EditItemScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({});
