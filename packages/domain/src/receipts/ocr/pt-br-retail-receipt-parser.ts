@@ -1,4 +1,4 @@
-import type { ReceiptOcrDocument, ReceiptOcrLine, ReceiptOcrRect } from '@pp-planning/contracts';
+import type { ReceiptOcrDocument, ReceiptOcrLine } from '@pp-planning/contracts';
 import type { ReceiptExtractionResult, ReceiptExtractedItem } from '@pp-planning/contracts';
 import { RECEIPT_TOTAL_TOLERANCE_CENTS } from '@pp-planning/contracts';
 import { DomainError } from '../../shared/domain-error.js';
@@ -13,7 +13,6 @@ import {
   MERCHANT_SKIP_ANCHORS,
   PAYMENT_ANCHORS,
   QTY_TIMES_UNIT_PATTERN,
-  QUANTITY_UNIT_PATTERN,
   TOTAL_NEGATIVE_ANCHORS,
   TOTAL_POSITIVE_ANCHORS,
   WEIGHTED_LINE_PATTERN,
@@ -154,15 +153,6 @@ function extractDiscountAmountInCents(text: string): string | null {
   return parseBrazilianMoneyToCents(negativeMatch[1]!);
 }
 
-function applyPendingDiscount(item: DraftItem): void {
-  if (!item.pendingDiscountInCents || !item.lineTotalInCents) {
-    return;
-  }
-  const next = BigInt(item.lineTotalInCents) - BigInt(item.pendingDiscountInCents);
-  item.lineTotalInCents = next > 0n ? next.toString() : '0';
-  item.pendingDiscountInCents = null;
-}
-
 function applyDiscountToPreviousItem(previous: DraftItem, discountInCents: string): void {
   previous.needsReview = true;
   if (!previous.warnings.some((warning) => warning.includes('Desconto'))) {
@@ -280,32 +270,6 @@ function getHeaderRow(
   return groupLinesByRow([headerLine], rowToleranceY)[0] ?? [headerLine];
 }
 
-function attachPriceToPreviousItem(
-  items: DraftItem[],
-  lineTotalInCents: string,
-  rowText: string,
-): boolean {
-  const previous = items[items.length - 1];
-  if (!previous || previous.lineTotalInCents) {
-    return false;
-  }
-
-  previous.lineTotalInCents = lineTotalInCents;
-  const qtyMatch = QTY_TIMES_UNIT_PATTERN.exec(rowText);
-  if (qtyMatch) {
-    previous.quantity = qtyMatch[1]!.replace('.', ',');
-    previous.unitOfMeasure = qtyMatch[2]!.toUpperCase();
-    previous.unitPriceInCents = parseBrazilianMoneyToCents(qtyMatch[3]!);
-  }
-  applyPendingDiscount(previous);
-  previous.warnings = previous.warnings.filter((warning) => warning !== 'Valor não identificado.');
-  previous.needsReview = previous.needsReview || Boolean(previous.pendingDiscountInCents);
-  if (previous.lineTotalInCents) {
-    previous.confidence = Math.max(previous.confidence, 0.65);
-  }
-  return true;
-}
-
 function isMerchantCandidate(line: NormalizedOcrLine): boolean {
   if (!line.text || looksLikeMoneyText(line.text)) {
     return false;
@@ -349,17 +313,6 @@ function isLikelyNonItemLine(lineText: string): boolean {
     return true;
   }
   return false;
-}
-
-function parseQuantityUnit(text: string): { quantity: string | null; unitOfMeasure: string | null } {
-  const match = QUANTITY_UNIT_PATTERN.exec(text);
-  if (!match) {
-    return { quantity: null, unitOfMeasure: null };
-  }
-  return {
-    quantity: match[1]!.replace('.', ','),
-    unitOfMeasure: match[2]!.toUpperCase(),
-  };
 }
 
 function parseWeightedLine(text: string): {

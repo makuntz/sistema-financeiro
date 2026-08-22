@@ -3,7 +3,7 @@ import { receiptOcrDocumentSchema } from '@pp-planning/contracts';
 import { DomainError } from '../shared/domain-error.js';
 import { PtBrRetailReceiptParser } from './ocr/pt-br-retail-receipt-parser.js';
 import type { ReceiptOcrParser } from './ocr/pt-br-retail-receipt-parser.js';
-import { ApplyExtractionResult } from './receipt-use-cases.js';
+import type { ApplyExtractionResult } from './receipt-use-cases.js';
 import type { ReceiptCaptureRepository } from './repositories.js';
 import type { ReceiptCapture } from './receipt-capture.js';
 import type { ReceiptItem } from './receipt-item.js';

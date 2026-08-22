@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ReceiptExtractionResult } from '@pp-planning/contracts';
 import { DomainError } from '../shared/domain-error.js';
-import { validateExtractionResult, normalizeExtractedMoneyInCents } from './receipt-extractor.js';
+import { normalizeExtractedMoneyInCents } from './receipt-extractor.js';
 import { ReceiptCapture } from './receipt-capture.js';
 import { ReceiptItem } from './receipt-item.js';
 import type {
