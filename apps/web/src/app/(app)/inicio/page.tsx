@@ -23,7 +23,11 @@ import {
   parsePlanningSearchParams,
   shiftMonth,
 } from '@/lib/planning-period';
-import { formatMonthPeriod, formatSharePercent, usagePercent } from '@/features/planning/planning-metrics';
+import {
+  formatMonthPeriod,
+  formatSharePercent,
+  usagePercent,
+} from '@/features/planning/planning-metrics';
 
 type BudgetCategory = {
   categoryId: string;
@@ -354,7 +358,9 @@ function InicioPage() {
               size={72}
               stroke={8}
             />
-            <div className="stat-card-hint">{budgetUsed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}% do orçamento total</div>
+            <div className="stat-card-hint">
+              {budgetUsed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}% do orçamento total
+            </div>
           </div>
         </article>
       </div>
@@ -508,8 +514,8 @@ function InicioPage() {
               <div>
                 <strong>Orçamento utilizado</strong>
                 <p>
-                  Você já usou {budgetUsed.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do
-                  planejado para gastos.
+                  Você já usou {budgetUsed.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+                  do planejado para gastos.
                 </p>
               </div>
             </article>

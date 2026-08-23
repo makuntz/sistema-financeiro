@@ -68,7 +68,7 @@
   --radius-xl: 1.125rem;
   --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
   --font-display: 'Source Sans 3', 'Segoe UI', sans-serif;
-  --sidebar-width: 16.5rem;
+  --sidebar-width: 13.75rem;
 }
 
 html[data-theme='dark'] {

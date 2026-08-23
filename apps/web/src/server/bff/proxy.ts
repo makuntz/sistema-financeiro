@@ -32,8 +32,7 @@ export async function authenticatedProxy(
 
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
-    // refreshOnce already clears cookies on definitive auth failure.
-    // Do not clear here — transient API downtime must keep the refresh cookie.
+    // Do not clear cookies here — refreshOnce keeps them on races/outages.
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

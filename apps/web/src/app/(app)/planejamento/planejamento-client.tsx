@@ -15,10 +15,9 @@ import {
 } from 'lucide-react';
 import { useUnsavedChanges } from '@/components/unsaved-changes';
 import { PlanningCategorySection } from '@/features/planning/planning-category-section';
-import { PlanningColumnHeader } from '@/features/planning/planning-column-header';
 import { PlanningSidePanel } from '@/features/planning/planning-side-panel';
 import { PlanningSummaryCards } from '@/features/planning/planning-summary-cards';
-import { getPlanningColumnLabels } from '@/features/planning/planning-metrics';
+import { formatMonthPeriod } from '@/features/planning/planning-metrics';
 import { getPermissions, normalizeRole } from '@/lib/permissions';
 import {
   addCentsStrings,
@@ -303,11 +302,10 @@ export default function PlanejamentoPage() {
 
   useEffect(() => {
     if (!plan || tab === 'resumo') return;
-    const first = filteredCategories[0];
-    if (!first) return;
+    if (filteredCategories.length === 0) return;
     setExpanded((prev) => {
       if (prev.size > 0) return prev;
-      return new Set([first.id]);
+      return new Set(filteredCategories.map((category) => category.id));
     });
   }, [plan, tab, filteredCategories]);
 
@@ -481,17 +479,18 @@ export default function PlanejamentoPage() {
   const incomeRealized = comparison?.totalRealizedIncomeInCents ?? '0';
   const expenseRealized = comparison?.totalRealizedExpenseInCents ?? '0';
   const tabSourceStats = countSources(filteredCategories);
+  const period = formatMonthPeriod(year, month);
 
   return (
     <div className="planning-page">
       <header className="planning-topbar">
         <div className="planning-topbar-title">
           <h1>{editMode ? 'Editar Planejamento' : 'Planejamento Mensal'}</h1>
-          <p>
-            {editMode
-              ? 'Defina as receitas e distribua o orçamento entre categorias e subcategorias.'
-              : 'Organize sua receita e despesas para o mês.'}
-            {!canWrite ? ' Você tem acesso somente leitura.' : null}
+          <p className="planning-topbar-period">
+            {period.startLabel} até {period.endLabel}
+            <span aria-hidden="true"> · </span>
+            {period.days} {period.days === 1 ? 'dia' : 'dias'}
+            {!canWrite ? <span> · Somente leitura</span> : null}
           </p>
         </div>
 
@@ -511,24 +510,24 @@ export default function PlanejamentoPage() {
         <div className="planning-topbar-actions">
           {canWrite && editMode ? (
             <>
-              <Button variant="secondary" onClick={cancelEdit} disabled={saving}>
+              <Button variant="ghost" onClick={cancelEdit} disabled={saving}>
                 Cancelar
               </Button>
-              <Button variant="secondary" onClick={handleCopyPrevious} disabled={copying || saving}>
-                <Copy size={16} /> Copiar mês anterior
+              <Button variant="ghost" onClick={handleCopyPrevious} disabled={copying || saving}>
+                <Copy size={14} /> Copiar mês anterior
               </Button>
               <Button onClick={() => void handleSave()} disabled={saving || !hasCategories}>
-                <Check size={16} /> {saving ? 'Salvando…' : 'Salvar planejamento'}
+                <Check size={14} /> {saving ? 'Salvando…' : 'Salvar planejamento'}
               </Button>
             </>
           ) : null}
           {canWrite && !editMode ? (
             <>
-              <Button variant="secondary" onClick={handleCopyPrevious} disabled={copying}>
-                <Copy size={16} /> Copiar mês anterior
+              <Button variant="ghost" onClick={handleCopyPrevious} disabled={copying}>
+                <Copy size={14} /> Copiar mês anterior
               </Button>
-              <Button onClick={startEdit} disabled={!hasCategories}>
-                <Pencil size={16} /> Editar planejamento
+              <Button variant="ghost" onClick={startEdit} disabled={!hasCategories}>
+                <Pencil size={14} /> Editar planejamento
               </Button>
             </>
           ) : null}
@@ -554,7 +553,7 @@ export default function PlanejamentoPage() {
         </Alert>
       ) : null}
 
-      {hasCategories ? (
+      {hasCategories && tab === 'resumo' ? (
         <PlanningSummaryCards
           tab={tab}
           year={year}
@@ -700,61 +699,51 @@ export default function PlanejamentoPage() {
       ) : (
         <div className={`planning-workspace${editMode ? ' is-editing' : ''}`}>
           <div className="planning-main-column">
-            <section
-              className={`planning-table-panel${viewMode === 'grid' ? ' is-grid' : ''}`}
-            >
-              <PlanningColumnHeader
-                labels={getPlanningColumnLabels(tab === 'receitas' ? 'income' : 'expense')}
-                showUsage={tab === 'gastos'}
-              />
-              <div className="planning-categories">
-                {filteredCategories.map((category) => {
-                  const comparisonCat = comparisonByCategory.get(category.id);
-                  const plannedInCents = editMode
-                    ? categorySubtotal(category, draft)
-                    : (comparisonCat?.plannedInCents ?? category.plannedAmountInCents ?? '0');
-                  const realizedInCents = comparisonCat?.realizedInCents ?? '0';
+            <div className={`planning-categories${viewMode === 'grid' ? ' is-grid' : ''}`}>
+              {filteredCategories.map((category) => {
+                const comparisonCat = comparisonByCategory.get(category.id);
+                const plannedInCents = editMode
+                  ? categorySubtotal(category, draft)
+                  : (comparisonCat?.plannedInCents ?? category.plannedAmountInCents ?? '0');
+                const realizedInCents = comparisonCat?.realizedInCents ?? '0';
 
-                  return (
-                    <PlanningCategorySection
-                      key={category.id}
-                      isOpen={expanded.has(category.id)}
-                      onToggle={() => toggleExpand(category.id)}
-                      editMode={editMode}
-                      canWrite={canWrite}
-                      hideValues={!showValues}
-                      onPlannedChange={(subcategoryId, value) =>
-                        setDraft((prev) => ({ ...prev, [subcategoryId]: value }))
-                      }
-                      category={{
-                        id: category.id,
-                        name: category.name,
-                        type: category.type,
-                        color: category.color,
-                        icon: category.icon,
-                        isActive: category.isActive,
-                        plannedInCents,
-                        realizedInCents,
-                        subcategories: category.subcategories.map((sub) => {
-                          const comparisonSub = comparisonBySub.get(sub.id);
-                          return {
-                            id: sub.id,
-                            name: sub.name,
-                            isActive: sub.isActive,
-                            plannedInCents: editMode
-                              ? (draft[sub.id] ?? sub.plannedAmountInCents ?? '0')
-                              : (comparisonSub?.plannedInCents ??
-                                sub.plannedAmountInCents ??
-                                '0'),
-                            realizedInCents: comparisonSub?.realizedInCents ?? '0',
-                          };
-                        }),
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </section>
+                return (
+                  <PlanningCategorySection
+                    key={category.id}
+                    isOpen={expanded.has(category.id)}
+                    onToggle={() => toggleExpand(category.id)}
+                    editMode={editMode}
+                    canWrite={canWrite}
+                    hideValues={!showValues}
+                    onPlannedChange={(subcategoryId, value) =>
+                      setDraft((prev) => ({ ...prev, [subcategoryId]: value }))
+                    }
+                    category={{
+                      id: category.id,
+                      name: category.name,
+                      type: category.type,
+                      color: category.color,
+                      icon: category.icon,
+                      isActive: category.isActive,
+                      plannedInCents,
+                      realizedInCents,
+                      subcategories: category.subcategories.map((sub) => {
+                        const comparisonSub = comparisonBySub.get(sub.id);
+                        return {
+                          id: sub.id,
+                          name: sub.name,
+                          isActive: sub.isActive,
+                          plannedInCents: editMode
+                            ? (draft[sub.id] ?? sub.plannedAmountInCents ?? '0')
+                            : (comparisonSub?.plannedInCents ?? sub.plannedAmountInCents ?? '0'),
+                          realizedInCents: comparisonSub?.realizedInCents ?? '0',
+                        };
+                      }),
+                    }}
+                  />
+                );
+              })}
+            </div>
 
             <Link href="/configuracoes/categorias" className="planning-add-row">
               + {tab === 'receitas' ? 'Adicionar fonte de receita' : 'Adicionar categoria de gasto'}
@@ -770,14 +759,16 @@ export default function PlanejamentoPage() {
               expensePlannedInCents={displayTotals.expensePlannedInCents}
               categoryCount={tabSourceStats.categoryCount}
               subcategoryCount={tabSourceStats.subcategoryCount}
-              positiveBalanceCount={filteredCategories.filter((category) => {
-                const comparisonCat = comparisonByCategory.get(category.id);
-                const planned = editMode
-                  ? categorySubtotal(category, draft)
-                  : (comparisonCat?.plannedInCents ?? category.plannedAmountInCents ?? '0');
-                const realized = comparisonCat?.realizedInCents ?? '0';
-                return BigInt(planned) - BigInt(realized) >= 0n;
-              }).length}
+              positiveBalanceCount={
+                filteredCategories.filter((category) => {
+                  const comparisonCat = comparisonByCategory.get(category.id);
+                  const planned = editMode
+                    ? categorySubtotal(category, draft)
+                    : (comparisonCat?.plannedInCents ?? category.plannedAmountInCents ?? '0');
+                  const realized = comparisonCat?.realizedInCents ?? '0';
+                  return BigInt(planned) - BigInt(realized) >= 0n;
+                }).length
+              }
               onCopyPrevious={handleCopyPrevious}
             />
           ) : null}

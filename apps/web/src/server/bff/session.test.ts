@@ -108,7 +108,7 @@ describe('BFF session refresh concurrency', () => {
     );
   });
 
-  it('clears cookies when refresh is invalid', async () => {
+  it('keeps cookies when refresh is invalid (rotation race must not log out)', async () => {
     getRefreshTokenMock.mockResolvedValue('bad-refresh');
     apiFetchMock.mockResolvedValueOnce(new Response('{"error":{}}', { status: 401 }));
 
@@ -116,29 +116,41 @@ describe('BFF session refresh concurrency', () => {
     const token = await refreshOnce();
 
     expect(token).toBeNull();
-    expect(clearAuthCookiesMock).toHaveBeenCalled();
+    expect(clearAuthCookiesMock).not.toHaveBeenCalled();
   });
 
-  it('keeps cookies when refresh fails because the API is down (5xx)', async () => {
+  it('retries then succeeds when the API is temporarily down (5xx)', async () => {
     getRefreshTokenMock.mockResolvedValue('valid-refresh');
-    apiFetchMock.mockResolvedValueOnce(new Response('{"error":{}}', { status: 503 }));
+    apiFetchMock
+      .mockResolvedValueOnce(new Response('{"error":{}}', { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tokens: { accessToken: 'access-new', refreshToken: 'refresh-new' },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+
+    const { refreshOnce } = await import('./session');
+    const token = await refreshOnce();
+
+    expect(token).toBe('access-new');
+    expect(setAuthCookiesMock).toHaveBeenCalledWith('access-new', 'refresh-new');
+    expect(clearAuthCookiesMock).not.toHaveBeenCalled();
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps cookies when refresh fetch keeps failing (connection refused)', async () => {
+    getRefreshTokenMock.mockResolvedValue('valid-refresh');
+    apiFetchMock.mockRejectedValue(new TypeError('fetch failed'));
 
     const { refreshOnce } = await import('./session');
     const token = await refreshOnce();
 
     expect(token).toBeNull();
     expect(clearAuthCookiesMock).not.toHaveBeenCalled();
-  });
-
-  it('keeps cookies when refresh fetch throws (connection refused)', async () => {
-    getRefreshTokenMock.mockResolvedValue('valid-refresh');
-    apiFetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
-
-    const { refreshOnce } = await import('./session');
-    const token = await refreshOnce();
-
-    expect(token).toBeNull();
-    expect(clearAuthCookiesMock).not.toHaveBeenCalled();
+    expect(apiFetchMock.mock.calls.length).toBeGreaterThan(1);
   });
 });
 
@@ -219,7 +231,7 @@ describe('authenticatedProxy refresh behavior', () => {
     expect(body.exists).toBe(false);
   });
 
-  it('returns 401 and clears cookies when refresh fails after 401', async () => {
+  it('returns 401 without clearing cookies when refresh fails after 401', async () => {
     getAccessTokenMock.mockResolvedValue('expired');
     getRefreshTokenMock.mockResolvedValue('invalid-refresh');
 
@@ -231,14 +243,14 @@ describe('authenticatedProxy refresh behavior', () => {
     const res = await authenticatedProxy('/v1/categories', { skipOriginCheck: true });
 
     expect(res.status).toBe(401);
-    expect(clearAuthCookiesMock).toHaveBeenCalled();
+    expect(clearAuthCookiesMock).not.toHaveBeenCalled();
   });
 
   it('returns 401 without clearing cookies when refresh fails with 503', async () => {
     getAccessTokenMock.mockResolvedValue(undefined);
     getRefreshTokenMock.mockResolvedValue('valid-refresh');
 
-    apiFetchMock.mockResolvedValueOnce(new Response('{}', { status: 503 }));
+    apiFetchMock.mockResolvedValue(new Response('{}', { status: 503 }));
 
     const { authenticatedProxy } = await import('./proxy');
     const res = await authenticatedProxy('/v1/categories', { skipOriginCheck: true });

@@ -31,7 +31,13 @@ type User = { id: string; name: string; email: string };
 type Workspace = { id: string; name: string; role: string };
 
 type NavItem =
-  | { type: 'link'; href: string; label: string; icon: typeof LayoutDashboard; match?: (path: string) => boolean }
+  | {
+      type: 'link';
+      href: string;
+      label: string;
+      icon: typeof LayoutDashboard;
+      match?: (path: string) => boolean;
+    }
   | { type: 'soon'; label: string; icon: typeof LayoutDashboard }
   | {
       type: 'group';
@@ -222,7 +228,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             if (item.type === 'soon') {
               return (
                 <div key={item.label} className="nav-item is-soon" title="Em breve">
-                  <item.icon size={18} aria-hidden />
+                  <item.icon size={16} aria-hidden />
                   <span>{item.label}</span>
                   <span className="soon-badge">Em breve</span>
                 </div>
@@ -241,7 +247,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     onClick={() => setSettingsOpen((open) => !open)}
                     aria-expanded={settingsOpen}
                   >
-                    <item.icon size={18} aria-hidden />
+                    <item.icon size={16} aria-hidden />
                     <span>{item.label}</span>
                     <ChevronDown
                       size={14}
@@ -263,7 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               navigate(child.href);
                             }}
                           >
-                            <child.icon size={16} aria-hidden />
+                            <child.icon size={14} aria-hidden />
                             <span>{child.label}</span>
                           </Link>
                         );
@@ -285,7 +291,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   navigate(item.href);
                 }}
               >
-                <item.icon size={18} aria-hidden />
+                    <item.icon size={16} aria-hidden />
                 <span>{item.label}</span>
               </Link>
             );

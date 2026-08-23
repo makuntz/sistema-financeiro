@@ -7,7 +7,6 @@ export type PlanningColumnLabels = {
   planned: string;
   realized: string;
   remaining: string;
-  utilized?: string;
 };
 
 export function formatMonthPeriod(year: number, month: number) {
@@ -38,11 +37,10 @@ export function getPlanningColumnLabels(kind: PlanningMetricKind): PlanningColum
     };
   }
   return {
-    name: 'Categoria / Subcategoria',
+    name: 'Subcategoria',
     planned: 'Planejado',
     realized: 'Realizado',
     remaining: 'Disponível',
-    utilized: 'Utilizado',
   };
 }
 

@@ -33,7 +33,7 @@ export function PlanningMoneyCell({
       className="planning-money-cell"
       style={{
         color,
-        fontWeight: emphasize ? 600 : 500,
+        fontWeight: emphasize ? 700 : 500,
       }}
       aria-label={`${label}: ${formatCentsToBRL(value)}`}
     >

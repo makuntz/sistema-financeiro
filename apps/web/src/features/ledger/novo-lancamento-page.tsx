@@ -5,16 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, Button, MoneyInput } from '@pp-planning/ui-web';
 import { formatCentsToBRL } from '@pp-planning/contracts';
-import {
-  Car,
-  Check,
-  Fuel,
-  Heart,
-  Paperclip,
-  Plus,
-  ShoppingCart,
-  Star,
-} from 'lucide-react';
+import { Car, Check, Fuel, Heart, Paperclip, Plus, ShoppingCart, Star } from 'lucide-react';
 import { CategoryIconBadge } from '@/lib/category-icons';
 import { getPermissions, normalizeRole } from '@/lib/permissions';
 import {
@@ -56,14 +47,32 @@ type RecentEntry = {
 };
 
 const QUICK_ENTRIES = [
-  { id: 'mercado', label: 'Mercado', icon: ShoppingCart, color: '#059669', match: /mercado|mantimento/i },
-  { id: 'combustivel', label: 'Combustível', icon: Fuel, color: '#EA580C', match: /combust|gasolina|transporte/i },
+  {
+    id: 'mercado',
+    label: 'Mercado',
+    icon: ShoppingCart,
+    color: '#059669',
+    match: /mercado|mantimento/i,
+  },
+  {
+    id: 'combustivel',
+    label: 'Combustível',
+    icon: Fuel,
+    color: '#EA580C',
+    match: /combust|gasolina|transporte/i,
+  },
   { id: 'saude', label: 'Saúde', icon: Heart, color: '#16A34A', match: /sa[uú]de/i },
   { id: 'lazer', label: 'Lazer', icon: Star, color: '#7C3AED', match: /lazer|hobby/i },
-  { id: 'transporte', label: 'Transporte', icon: Car, color: '#2563EB', match: /transporte|uber|carro/i },
+  {
+    id: 'transporte',
+    label: 'Transporte',
+    icon: Car,
+    color: '#2563EB',
+    match: /transporte|uber|carro/i,
+  },
 ] as const;
 
-const PAYMENT_METHODS = ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito'];
+const PAYMENT_METHODS = ['Pix', 'Crédito', 'Débito'];
 const BANKS = ['Itaú', 'Nubank', 'Bradesco', 'Banco do Brasil', 'C6 Bank', 'XP', 'Carteira'];
 
 function todayDateOnly(): string {
@@ -103,7 +112,7 @@ export function NovoLancamentoPage() {
   const [occurredOn, setOccurredOn] = useState(todayDateOnly());
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cartão de Crédito');
+  const [paymentMethod, setPaymentMethod] = useState('Crédito');
   const [bank, setBank] = useState('Itaú');
   const [installment, setInstallment] = useState(false);
   const [installmentCount, setInstallmentCount] = useState(1);
@@ -118,7 +127,11 @@ export function NovoLancamentoPage() {
     fetch('/api/bff/workspaces')
       .then((r) => (r.ok ? r.json() : null))
       .then((payload) => {
-        const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
         const first = list[0];
         setRole(normalizeRole(first?.role ?? first?.workspace?.role ?? 'viewer'));
       })
@@ -127,7 +140,11 @@ export function NovoLancamentoPage() {
     fetch('/api/bff/categories')
       .then((r) => (r.ok ? r.json() : null))
       .then((payload) => {
-        const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
         setCategories(list as Category[]);
       })
       .catch(() => undefined);
@@ -179,13 +196,11 @@ export function NovoLancamentoPage() {
       percentAfter: usagePercent(planned, after),
       label: selectedSub?.name
         ? `${selectedCategory?.name ?? 'Categoria'} / ${selectedSub.name}`
-        : selectedCategory?.name ?? 'Selecione uma categoria',
+        : (selectedCategory?.name ?? 'Selecione uma categoria'),
     };
   }, [comparison, categoryId, subcategoryId, amountInCents, selectedCategory, selectedSub]);
 
-  const similar = recent
-    .filter((entry) => entry.subcategoryId === subcategoryId)
-    .slice(0, 3);
+  const similar = recent.filter((entry) => entry.subcategoryId === subcategoryId).slice(0, 3);
 
   function applyQuick(match: RegExp) {
     const cat = filteredCategories.find((c) => match.test(c.name));
@@ -302,7 +317,11 @@ export function NovoLancamentoPage() {
 
             <label>
               <span>Data</span>
-              <input type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
+              <input
+                type="date"
+                value={occurredOn}
+                onChange={(e) => setOccurredOn(e.target.value)}
+              />
             </label>
 
             <label>
@@ -364,11 +383,7 @@ export function NovoLancamentoPage() {
             <fieldset className="radio-fieldset">
               <legend>Parcelado?</legend>
               <label>
-                <input
-                  type="radio"
-                  checked={!installment}
-                  onChange={() => setInstallment(false)}
-                />{' '}
+                <input type="radio" checked={!installment} onChange={() => setInstallment(false)} />{' '}
                 Não
               </label>
               <label>
@@ -432,7 +447,11 @@ export function NovoLancamentoPage() {
           </div>
 
           <div className="novo-form-actions">
-            <Button variant="secondary" disabled={saving || !canWrite} onClick={() => void save(true)}>
+            <Button
+              variant="secondary"
+              disabled={saving || !canWrite}
+              onClick={() => void save(true)}
+            >
               <Plus size={16} /> Salvar e novo
             </Button>
             <Button disabled={saving || !canWrite} onClick={() => void save(false)}>
@@ -464,7 +483,8 @@ export function NovoLancamentoPage() {
                 />
               </div>
               <span className="planning-usage-pct">
-                {impact.percentAfter.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% utilizado
+                {impact.percentAfter.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+                utilizado
               </span>
             </div>
 
@@ -489,7 +509,9 @@ export function NovoLancamentoPage() {
               </div>
             </dl>
 
-            <div className={`impact-balance${impact.available.startsWith('-') ? ' is-danger' : ''}`}>
+            <div
+              className={`impact-balance${impact.available.startsWith('-') ? ' is-danger' : ''}`}
+            >
               Saldo disponível após lançamento: {formatCentsToBRL(impact.available)}
             </div>
           </section>

@@ -1,10 +1,6 @@
 import { formatCentsToBRL } from '@pp-planning/contracts';
 import { BarChart3, CalendarDays, ShoppingCart, Wallet } from 'lucide-react';
-import {
-  formatMonthPeriod,
-  formatSharePercent,
-  usagePercent,
-} from './planning-metrics';
+import { formatMonthPeriod, formatSharePercent, usagePercent } from './planning-metrics';
 import type { PlanningTab } from '@/lib/planning-period';
 
 export { formatMonthPeriod, formatSharePercent } from './planning-metrics';
