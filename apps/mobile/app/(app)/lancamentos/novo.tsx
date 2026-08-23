@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Button, Input, MoneyInput, Screen, Text } from '@pp-planning/ui-mobile';
+import { Button, Input, MoneyDigitPad, Screen, Text } from '@pp-planning/ui-mobile';
 import { apiClient } from '@/src/lib/api';
 import { todayDateOnly } from '@/src/lib/utils';
 import { flattenSubcategories, useCategories } from '@/src/hooks/use-categories';
@@ -95,7 +95,7 @@ export default function NovoLancamentoScreen() {
         onChangeText={setOccurredOn}
         autoCapitalize="none"
       />
-      <MoneyInput label="Valor" cents={amountInCents} onChangeCents={setAmountInCents} />
+      <MoneyDigitPad label="Valor" cents={amountInCents} onChangeCents={setAmountInCents} />
 
       <Button
         label={saving ? 'Salvando...' : 'Salvar lançamento'}
